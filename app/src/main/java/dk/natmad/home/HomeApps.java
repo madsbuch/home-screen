@@ -8,9 +8,8 @@ public final class HomeApps {
     // App names are read from Android, not configured here.
     public static final String[][] PACKAGES = {
         {"org.thoughtcrime.securesms"},
-        {"com.android.chrome"},
         {"com.google.android.dialer", "com.android.dialer"},
-        {"com.google.android.apps.maps"},
+        {"de.hafas.android.rejseplanen"},
         {"com.fastmail.app"},
         {"com.garmin.android.apps.connectmobile"},
         {"com.madsbuch.tally"},

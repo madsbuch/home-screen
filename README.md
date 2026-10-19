@@ -9,15 +9,14 @@ Edit `HomeApps.PACKAGES` in `app/src/main/java/dk/natmad/home/HomeApps.java`, re
 | Label | Package ID |
 | --- | --- |
 | Signal | `org.thoughtcrime.securesms` |
-| Chrome | `com.android.chrome` |
 | Phone | `com.google.android.dialer`, then `com.android.dialer` |
-| Maps | `com.google.android.apps.maps` |
+| Rejseplanen | `de.hafas.android.rejseplanen` |
 | FastMail | `com.fastmail.app` |
 | Garmin Connect | `com.garmin.android.apps.connectmobile` |
 | Tally | `com.madsbuch.tally` |
 | Varg | `com.varg.workout` |
 
-Android resolves each package's launch activity with `getLaunchIntentForPackage` and its display name with `ApplicationInfo.loadLabel`. The first launchable alternative in a row wins. Names follow the app's own localized label; there is no hardcoded name or matching by app name. Renaming an app, changing language, or updating its launch activity does not change which package is selected. Missing/unlaunchable packages are omitted; all launcher entries from a selected package are excluded from Everything else.
+Android resolves each package's launch activity with `getLaunchIntentForPackage` and its display name with `ApplicationInfo.loadLabel`. The first launchable alternative in a row wins. Names follow the app's own localized label; there is no hardcoded name or matching by app name. Renaming an app, changing language, or updating its launch activity does not change which package is selected. Missing/unlaunchable packages are omitted from home. Everything else includes all launchable apps, including those on home; Quiet Home itself is omitted.
 
 If your phone uses a different dialer (for example, a manufacturer-specific one), add its exact package ID to the Phone entry. There is no name-based fallback. The list is rebuilt from the code whenever the launcher resumes. There is no runtime editor or saved favorite override: older versions' organization preferences are ignored.
 
@@ -53,7 +52,7 @@ The script creates an app-specific signing key in the ignored `.signing/` direct
 ## How it works
 
 - **Home:** the code-defined app list, one tap to open. The clock follows the phone's 12/24-hour setting.
-- **Everything else:** an alphabetical list of the remaining installed apps, including anything previously classified as a distraction. Tap an app to open it.
+- **Everything else:** an alphabetical list of all launchable installed apps, including those on home. Chrome and Maps remain available here. Tap an app to open it.
 - **Search apps:** filters that list as you type, matching any part of a name regardless of capitalization. Clear restores the full list; returning home resets the query. Opening the list focuses search and requests the keyboard.
 
 Each app has a muted 24dp identicon on an 8×8 grid. SHA-256 of the Android package identifier supplies four bits per row, mirrored horizontally into eight columns. The mark stays the same across restarts, label/language changes, and launcher activity changes. Apps from the same package share a mark. These are visual cues, not guaranteed unique identifiers; the app name remains visible. Drawing uses native Android Canvas with no image assets or downloads.
@@ -83,6 +82,6 @@ adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debu
 adb -s emulator-5554 shell am instrument -w dk.natmad.home.test/dk.natmad.home.LauncherSmokeTest
 ```
 
-The rule checks cover partial search, casing, whitespace, Unicode equivalence, and no matches. The instrumentation test verifies home ordering from configured package IDs, filtering against installed apps, empty results, clearing, and resetting search after returning home. The emulator needs at least one non-home app installed.
+The rule checks cover partial search, casing, whitespace, Unicode equivalence, and no matches. The instrumentation test verifies home ordering from configured package IDs, an alphabetical drawer including home apps, filtering against installed apps, empty results, clearing, and resetting search after returning home. The emulator needs at least one configured home app installed.
 
 Physical-device behavior and Android 8–13/15+ still need testing. Lint may report non-blocking notices about newer SDK/Gradle versions and backup configuration. Earlier screenshots in `docs/` show previous versions.

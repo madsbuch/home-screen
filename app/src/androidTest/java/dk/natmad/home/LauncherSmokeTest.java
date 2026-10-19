@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.TextView;
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -48,7 +49,17 @@ public class LauncherSmokeTest extends Instrumentation {
                 EditText search = findSearch(root);
                 require(search != null, "Search field is missing");
                 List<String> before = appLabels(root);
-                require(!before.isEmpty(), "Test device needs at least one non-home app");
+                require(!expectedHome.isEmpty(), "Test device needs at least one configured home app");
+                Intent allApps = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+                for (android.content.pm.ResolveInfo info : getTargetContext().getPackageManager().queryIntentActivities(allApps, 0)) {
+                    if (info.activityInfo.packageName.equals(getTargetContext().getPackageName())) continue;
+                    String appLabel = info.loadLabel(getTargetContext().getPackageManager()).toString();
+                    require(before.contains(appLabel), "Drawer must include every app, including home apps: " + appLabel);
+                }
+                List<String> alphabetical = new ArrayList<>(before);
+                alphabetical.sort(Collator.getInstance());
+                require(before.equals(alphabetical), "Drawer must be alphabetical");
+                require(!before.isEmpty(), "Test device needs at least one launchable app");
                 String label = before.get(0);
                 String query = label.substring(0, Math.min(3, label.length())).toUpperCase(Locale.ROOT);
                 search.setText("  " + query + "  ");
@@ -65,7 +76,7 @@ public class LauncherSmokeTest extends Instrumentation {
                 require(findSearch(root) == null, "Search should only be in the drawer");
                 find(root, "Everything else").performClick();
                 require(findSearch(root).getText().length() == 0, "Reopening the drawer must reset search");
-                require(appLabels(root).equals(before), "Drawer should reopen with all other apps");
+                require(appLabels(root).equals(before), "Drawer should reopen with all apps");
                 find(root, "Back").performClick();
             });
             result.putString("stream", "Launcher home and search smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");

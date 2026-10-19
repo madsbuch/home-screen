@@ -94,8 +94,6 @@ public class MainActivity extends Activity {
             found.add(new App(component.flattenToString(), info.loadLabel(getPackageManager()).toString(),
                 info.activityInfo.packageName));
         }
-        Collator collator = Collator.getInstance();
-        found.sort((a, b) -> collator.compare(a.label, b.label));
         apps.clear();
         for (App app : found) apps.put(app.id, app);
     }
@@ -245,15 +243,18 @@ public class MainActivity extends Activity {
     private void updateSearchResults() {
         if (searchResults == null) return;
         searchResults.removeAllViews();
+        List<App> sortedApps = new ArrayList<>(apps.values());
+        Collator collator = Collator.getInstance();
+        sortedApps.sort((a, b) -> collator.compare(a.label, b.label));
         int count = 0;
-        for (App app : apps.values()) {
-            if (!homePackages.contains(app.packageName) && AppRules.matchesSearch(searchQuery, app.label)) {
+        for (App app : sortedApps) {
+            if (AppRules.matchesSearch(searchQuery, app.label)) {
                 searchResults.addView(appAction(app, app.label, 23, () -> launch(app)));
                 count++;
             }
         }
         if (count == 0) searchResults.addView(copy(searchQuery.trim().isEmpty()
-            ? "All your apps are on home." : "No apps found.", 16, MUTED));
+            ? "No apps available." : "No apps found.", 16, MUTED));
         ((ScrollView) searchResults.getParent()).scrollTo(0, 0);
     }
 

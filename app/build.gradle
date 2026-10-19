@@ -1,0 +1,37 @@
+plugins { id 'com.android.application' }
+
+def signingPath = System.getenv('ANDROID_KEYSTORE_PATH')
+
+android {
+    namespace 'dk.natmad.home'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'dk.natmad.home'
+        minSdk 26
+        targetSdk 35
+        // CI supplies a larger, increasing code so each published build is an update.
+        versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '5')
+        versionName '0.5.0'
+        testInstrumentationRunner 'dk.natmad.home.LauncherSmokeTest'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    signingConfigs {
+        release {
+            if (signingPath) {
+                storeFile file(signingPath)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}

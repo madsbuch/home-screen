@@ -1,0 +1,121 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - name: Check search rules
+        run: sh scripts/test-rules.sh
+      - name: Build and lint
+        run: ./gradlew --no-daemon assembleDebug lintDebug
+
+  release:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Restore persistent signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_B64" || -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+            echo '::error::Missing Android signing secrets. Run scripts/setup-signing.py first.'
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/quiet-home.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/quiet-home.jks" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((10000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+
+      - name: Build signed release
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Verify and prepare APK
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/quiet-home.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/quiet-home.apk
+          (cd dist && sha256sum quiet-home.apk > quiet-home.apk.sha256)
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quiet-home-android
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish latest build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Do not replace the download with a rerun of an older commit.
+          HEAD_SHA=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$HEAD_SHA" != "$GITHUB_SHA" ]]; then
+            echo 'A newer commit is on main; leaving the latest release untouched.'
+            exit 0
+          fi
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          Install **quiet-home.apk** on your Android phone.
+
+          Built from ${GITHUB_SHA}. Android version code: ${VERSION_CODE}.
+
+          This is a signed release build. Later GitHub builds install as updates.
+          If you installed an earlier local debug APK, uninstall that build once before installing this one.
+
+          To make it your launcher: Android Settings → Default apps → Home app → Quiet Home.
+          EOF
+          git tag -f latest "$GITHUB_SHA"
+          git push origin refs/tags/latest --force
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest --title 'Quiet Home — latest build' --prerelease --notes-file "$RUNNER_TEMP/release-notes.md"
+          else
+            gh release create latest --verify-tag --title 'Quiet Home — latest build' --prerelease --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          gh release upload latest dist/quiet-home.apk dist/quiet-home.apk.sha256 --clobber
+          echo "Download: https://github.com/$GITHUB_REPOSITORY/releases/tag/latest" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/quiet-home.jks"

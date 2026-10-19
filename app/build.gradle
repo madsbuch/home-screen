@@ -11,8 +11,8 @@ android {
         minSdk 26
         targetSdk 35
         // CI supplies a larger, increasing code so each published build is an update.
-        versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '6')
-        versionName '0.6.0'
+        versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '7')
+        versionName '0.7.0'
         testInstrumentationRunner 'dk.natmad.home.LauncherSmokeTest'
     }
     compileOptions {

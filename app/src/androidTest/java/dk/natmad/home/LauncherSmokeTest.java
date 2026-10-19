@@ -77,9 +77,23 @@ public class LauncherSmokeTest extends Instrumentation {
                 find(root, "Everything else").performClick();
                 require(findSearch(root).getText().length() == 0, "Reopening the drawer must reset search");
                 require(appLabels(root).equals(before), "Drawer should reopen with all apps");
+                // Exercise the real search-to-launch path when YouTube is installed.
+                android.content.pm.PackageManager pm = getTargetContext().getPackageManager();
+                Intent youtube = pm.getLaunchIntentForPackage("com.google.android.youtube");
+                if (youtube != null) {
+                    String youtubeLabel = pm.resolveActivity(youtube, 0).loadLabel(pm).toString();
+                    findSearch(root).setText(youtubeLabel);
+                    find(root, youtubeLabel).performClick();
+                    require(find(root, "Open") != null && !find(root, "Open").isEnabled(),
+                        "A hard app opened from search must wait before opening");
+                    find(root, "Go back").performClick();
+                    require(findSearch(root).getText().toString().equals(youtubeLabel),
+                        "Cancelling must return to the search results");
+                }
                 find(root, "Back").performClick();
             });
-            result.putString("stream", "Launcher home and search smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
+            FrictionSmokeChecks.run(this, activity);
+            result.putString("stream", "Launcher home, search, and friction smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
             finish(Activity.RESULT_OK, result);
         } catch (Throwable error) {
             result.putString("stream", "FAILED: " + error + "\n");

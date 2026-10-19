@@ -77,6 +77,12 @@ public class MainActivity extends Activity {
         super.onSaveInstanceState(state);
     }
 
+    @Override protected void onPause() {
+        // A backgrounded attempt must never finish or retain credit toward opening an app.
+        if (screen.equals("gate")) showHome();
+        super.onPause();
+    }
+
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
@@ -176,7 +182,7 @@ public class MainActivity extends Activity {
         LinearLayout favorites = scrollArea();
         for (String id : home.keySet()) {
             App app = apps.get(id);
-            if (app != null) favorites.addView(appAction(app, home.get(id), 27, () -> launch(app)));
+            if (app != null) favorites.addView(appAction(app, home.get(id), 27, () -> requestLaunch(app)));
         }
         if (home.isEmpty()) {
             favorites.addView(copy("Your home, with a little less.", 23, WHITE));
@@ -249,7 +255,7 @@ public class MainActivity extends Activity {
         int count = 0;
         for (App app : sortedApps) {
             if (AppRules.matchesSearch(searchQuery, app.label)) {
-                searchResults.addView(appAction(app, app.label, 23, () -> launch(app)));
+                searchResults.addView(appAction(app, app.label, 23, () -> requestLaunch(app)));
                 count++;
             }
         }
@@ -262,6 +268,22 @@ public class MainActivity extends Activity {
         View focus = getCurrentFocus();
         if (focus != null) ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
             .hideSoftInputFromWindow(focus.getWindowToken(), 0);
+    }
+
+    private void requestLaunch(App app) {
+        AppFriction.Level level = AppFriction.forPackage(app.packageName);
+        if (level == AppFriction.Level.NONE) {
+            launch(app);
+            return;
+        }
+        boolean fromDrawer = screen.equals("everyday");
+        hideKeyboard();
+        searchResults = null;
+        page("gate");
+        scrollArea().addView(new LaunchGate(this, app.label, level, () -> launch(app), () -> {
+            if (fromDrawer) showList(false);
+            else showHome();
+        }));
     }
 
     private void launch(App app) {

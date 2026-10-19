@@ -33,6 +33,22 @@ Requires Android 8.0 or later. GitHub publishes a release APK signed with a pers
 
 For a local development build, transfer `app/build/outputs/apk/debug/app-debug.apk` to the phone instead. Keep debug builds separate from the release installation.
 
+## Opening friction
+
+Edit `AppFriction.java` to change package membership or durations; there is no organization UI. Every app stays in the alphabetical, searchable drawer. These checks apply to both home and drawer launches:
+
+| Category | Behavior | Configured apps |
+| --- | --- | --- |
+| Hard | Wait 30 seconds, then tap Open | YouTube, Instagram (including Lite), Facebook (including Lite), Threads, TikTok (global and regional), Reddit, X, Snapchat, Pinterest, LinkedIn, Bluesky, Mastodon, Tumblr |
+| Slight | Hold the opening button continuously for 3 seconds | ChatGPT, Claude, Gemini, Perplexity, Copilot, Grok, DeepSeek, Poe, Mistral, Character.AI |
+| Other | Open immediately | All other package IDs, including Signal, WhatsApp, and your everyday home apps |
+
+Releasing early, moving outside the button, or cancelling a touch resets the hold. Leaving the confirmation screen discards the attempt; losing window focus resets its timer. The hard countdown never opens an app automatically. Go back returns to the previous list and preserves the search query. Keyboard users can hold Enter, Space, or the center navigation key; TalkBack users activate once, wait 3 seconds, then activate again.
+
+The package lists cover the named apps, not every possible third-party client or future chat app. Add their exact IDs in code as needed. Package IDs can be checked in the `id=` parameter of an app's official Play Store link, for example [YouTube](https://play.google.com/store/apps/details?id=com.google.android.youtube), [Claude](https://play.google.com/store/apps/details?id=com.anthropic.claude), and [Gemini](https://play.google.com/store/apps/details?id=com.google.android.apps.bard).
+
+This is friction inside Quiet Home, not a system-wide app blocker. Notifications, links, Recents, assistant gestures, and websites can bypass it. No extra permission, phone connection, or background monitoring is required. Grayscale control is not included.
+
 ## GitHub builds
 
 Every push to `main` runs the search checks and Android lint, builds a signed release APK, verifies its signature, and updates the rolling [latest release](https://github.com/madsbuch/home-screen/releases/tag/latest). You can also trigger **Android APK → Run workflow** from Actions. Pull requests run checks without signing credentials or publication.
@@ -51,7 +67,7 @@ The script creates an app-specific signing key in the ignored `.signing/` direct
 
 ## How it works
 
-- **Home:** the code-defined app list, one tap to open. The clock follows the phone's 12/24-hour setting.
+- **Home:** the code-defined app list. Apps open immediately unless assigned opening friction. The clock follows the phone's 12/24-hour setting.
 - **Everything else:** an alphabetical list of all launchable installed apps, including those on home. Chrome and Maps remain available here. Tap an app to open it.
 - **Search apps:** filters that list as you type, matching any part of a name regardless of capitalization. Clear restores the full list; returning home resets the query. Opening the list focuses search and requests the keyboard.
 
@@ -82,6 +98,6 @@ adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debu
 adb -s emulator-5554 shell am instrument -w dk.natmad.home.test/dk.natmad.home.LauncherSmokeTest
 ```
 
-The rule checks cover partial search, casing, whitespace, Unicode equivalence, and no matches. The instrumentation test verifies home ordering from configured package IDs, an alphabetical drawer including home apps, filtering against installed apps, empty results, clearing, and resetting search after returning home. The emulator needs at least one configured home app installed.
+The rule checks cover search normalization, exact package classification, and duplicate category membership. The instrumentation test verifies home ordering, the full alphabetical drawer, search, and a real YouTube launch attempt when installed. It also runs the actual 30-second countdown and 3-second hold, checking early activation, release/cancellation, focus loss, duplicate activation, and detaching the view. The emulator needs at least one configured home app installed; touch-exploration should be off for the physical-hold tests.
 
 Physical-device behavior and Android 8–13/15+ still need testing. Lint may report non-blocking notices about newer SDK/Gradle versions and backup configuration. Earlier screenshots in `docs/` show previous versions.

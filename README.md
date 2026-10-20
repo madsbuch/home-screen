@@ -8,10 +8,8 @@ Edit `HomeApps.PACKAGES` in `app/src/main/java/dk/natmad/home/HomeApps.java`, re
 
 | Label | Package ID |
 | --- | --- |
-| Signal | `org.thoughtcrime.securesms` |
 | Phone | `com.google.android.dialer`, then `com.android.dialer` |
 | [Rejsekort](https://play.google.com/store/apps/details?id=dk.rejsekort.digitalrejsekort) | `dk.rejsekort.digitalrejsekort` |
-| FastMail | `com.fastmail.app` |
 | Garmin Connect | `com.garmin.android.apps.connectmobile` |
 | Tally | `com.madsbuch.tally` |
 | Varg | `com.varg.workout` |

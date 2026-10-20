@@ -10,7 +10,7 @@ Edit `HomeApps.PACKAGES` in `app/src/main/java/dk/natmad/home/HomeApps.java`, re
 | --- | --- |
 | Signal | `org.thoughtcrime.securesms` |
 | Phone | `com.google.android.dialer`, then `com.android.dialer` |
-| Rejseplanen | `de.hafas.android.rejseplanen` |
+| [Rejsekort](https://play.google.com/store/apps/details?id=dk.rejsekort.digitalrejsekort) | `dk.rejsekort.digitalrejsekort` |
 | FastMail | `com.fastmail.app` |
 | Garmin Connect | `com.garmin.android.apps.connectmobile` |
 | Tally | `com.madsbuch.tally` |
@@ -33,6 +33,14 @@ Requires Android 8.0 or later. GitHub publishes a release APK signed with a pers
 
 For a local development build, transfer `app/build/outputs/apk/debug/app-debug.apk` to the phone instead. Keep debug builds separate from the release installation.
 
+## Music controls
+
+Tap **Enable music controls** on home, then grant notification access to **Quiet Home music controls** in Android Settings. This is Android's permission for discovering other apps' [active media sessions](https://developer.android.com/reference/android/media/session/MediaSessionManager). Quiet Home does not read or store notification contents.
+
+While a player publishes a playing or paused media session, home shows the track, artist, and Previous / Play or Pause / Next controls above Everything else. Paused playback remains available to resume; stopped or ended sessions disappear. Unsupported controls are disabled. If several players have sessions, playing media takes priority over paused media. Track details update without rebuilding the home screen. Players must expose Android media sessions; this can include podcasts and video as well as music.
+
+Notification access is optional and can be revoked in Android Settings. Without it, home shows the setup button. Quiet Home observes session changes only while the home screen is in the foreground.
+
 ## Opening friction
 
 Edit `AppFriction.java` to change package membership or durations; there is no organization UI. Every app stays in the alphabetical, searchable drawer. These checks apply to both home and drawer launches:
@@ -45,9 +53,11 @@ Edit `AppFriction.java` to change package membership or durations; there is no o
 
 Releasing early, moving outside the button, or cancelling a touch resets the hold. Leaving the confirmation screen discards the attempt; losing window focus resets its timer. The hard countdown never opens an app automatically. Go back returns to the previous list and preserves the search query. Keyboard users can hold Enter, Space, or the center navigation key; TalkBack users activate once, wait 3 seconds, then activate again.
 
+The status area reserves enough space for every instruction and countdown message at the current screen width and font size, keeping the opening button in the same position as the text changes.
+
 The package lists cover the named apps, not every possible third-party client or future chat app. Add their exact IDs in code as needed. Package IDs can be checked in the `id=` parameter of an app's official Play Store link, for example [YouTube](https://play.google.com/store/apps/details?id=com.google.android.youtube), [Claude](https://play.google.com/store/apps/details?id=com.anthropic.claude), and [Gemini](https://play.google.com/store/apps/details?id=com.google.android.apps.bard).
 
-This is friction inside Quiet Home, not a system-wide app blocker. Notifications, links, Recents, assistant gestures, and websites can bypass it. No extra permission, phone connection, or background monitoring is required. Grayscale control is not included.
+This is friction inside Quiet Home, not a system-wide app blocker. Notifications, links, Recents, assistant gestures, and websites can bypass it. Opening friction itself requires no extra permission, phone connection, or background monitoring. Grayscale control is not included.
 
 ## GitHub builds
 
@@ -95,9 +105,10 @@ sh scripts/test-rules.sh
 ./gradlew assembleDebug assembleDebugAndroidTest lintDebug
 adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s emulator-5554 shell cmd notification allow_listener dk.natmad.home/dk.natmad.home.MediaAccessService
 adb -s emulator-5554 shell am instrument -w dk.natmad.home.test/dk.natmad.home.LauncherSmokeTest
 ```
 
-The rule checks cover search normalization, exact package classification, and duplicate category membership. The instrumentation test verifies home ordering, the full alphabetical drawer, search, and a real YouTube launch attempt when installed. It also runs the actual 30-second countdown and 3-second hold, checking early activation, release/cancellation, focus loss, duplicate activation, and detaching the view. The emulator needs at least one configured home app installed; touch-exploration should be off for the physical-hold tests.
+The rule checks cover search normalization, exact package classification, and duplicate category membership. The instrumentation test verifies home ordering, the full alphabetical drawer, search, and a real YouTube launch attempt when installed. It also runs the actual 30-second countdown and 3-second hold, checking early activation, release/cancellation, focus loss, duplicate activation, detaching the view, and stable button placement with narrow layouts and large text. Real test media sessions exercise play/pause, previous/next, metadata updates, unsupported actions, session priority, stopped/released sessions, and returning home. They do not play audio. The emulator needs at least one configured home app installed, notification access enabled as above, and touch-exploration off for physical-hold tests. Revoke the test grant afterwards with `adb -s emulator-5554 shell cmd notification disallow_listener dk.natmad.home/dk.natmad.home.MediaAccessService`.
 
 Physical-device behavior and Android 8–13/15+ still need testing. Lint may report non-blocking notices about newer SDK/Gradle versions and backup configuration. Earlier screenshots in `docs/` show previous versions.

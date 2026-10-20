@@ -39,6 +39,8 @@ public class MainActivity extends Activity {
     private String screen = "home";
     private String searchQuery = "";
     private LinearLayout searchResults;
+    private MediaControls mediaControls;
+    private boolean resumed;
 
     private static class App {
         final String id;
@@ -65,6 +67,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        resumed = true;
         refreshApps();
         selectHomeApps();
         if (screen.equals("home")) showHome();
@@ -78,6 +81,8 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        resumed = false;
+        if (mediaControls != null) mediaControls.stop();
         // A backgrounded attempt must never finish or retain credit toward opening an app.
         if (screen.equals("gate")) showHome();
         super.onPause();
@@ -135,6 +140,8 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout page(String name) {
+        if (mediaControls != null) mediaControls.stop();
+        mediaControls = null;
         screen = name;
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -188,6 +195,9 @@ public class MainActivity extends Activity {
             favorites.addView(copy("Your home, with a little less.", 23, WHITE));
             favorites.addView(copy("Your other apps are in Everything else.", 16, MUTED));
         }
+        mediaControls = new MediaControls(this);
+        root.addView(mediaControls, new LinearLayout.LayoutParams(-1, -2));
+        if (resumed) mediaControls.start();
         root.addView(action("Everything else", 17, WHITE, () -> showList(true)));
     }
 

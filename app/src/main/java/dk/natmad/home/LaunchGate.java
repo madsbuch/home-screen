@@ -10,11 +10,15 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /** A foreground-only opening attempt. Detaching or losing focus discards all progress. */
 final class LaunchGate extends LinearLayout {
+    private static final String WAIT_INSTRUCTION = "Wait 30 seconds before opening.";
+    private static final String HOLD_INSTRUCTION = "Hold for 3 seconds to open. Release to cancel.";
+    private static final String ACCESSIBLE_INSTRUCTION = "Activate, wait 3 seconds, then activate again to open.";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final AppFriction.Level level;
     private final Runnable open;
@@ -36,7 +40,21 @@ final class LaunchGate extends LinearLayout {
         setOrientation(VERTICAL);
         addView(text(label, 30));
         status = text("", 18);
-        addView(status);
+        // Measure every possible message at the current width/font scale. Invisible
+        // copies reserve the space without clipping instructions or moving the target.
+        FrameLayout statusArea = new FrameLayout(context);
+        String[] messages = level == AppFriction.Level.HARD
+            ? new String[] {WAIT_INSTRUCTION, "Wait · 30s", "Ready when you are."}
+            : new String[] {HOLD_INSTRUCTION, ACCESSIBLE_INSTRUCTION,
+                "Keep holding · 3s", "Wait · 3s", "Ready when you are."};
+        for (String message : messages) {
+            TextView reserve = text(message, 18);
+            reserve.setVisibility(INVISIBLE);
+            reserve.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            statusArea.addView(reserve, new FrameLayout.LayoutParams(-1, -2));
+        }
+        statusArea.addView(status, new FrameLayout.LayoutParams(-1, -2));
+        addView(statusArea, new LayoutParams(-1, -2));
         button = new Button(context);
         button.setAllCaps(false);
         button.setTextColor(Color.rgb(225, 225, 225));
@@ -113,9 +131,8 @@ final class LaunchGate extends LinearLayout {
         button.setPressed(false);
         button.setEnabled(level == AppFriction.Level.SLIGHT);
         button.setText(level == AppFriction.Level.HARD ? "Open" : "Hold to open");
-        status.setText(level == AppFriction.Level.HARD ? "Wait 30 seconds before opening."
-            : touchExploration() ? "Activate, wait 3 seconds, then activate again to open."
-            : "Hold for 3 seconds to open. Release to cancel.");
+        status.setText(level == AppFriction.Level.HARD ? WAIT_INSTRUCTION
+            : touchExploration() ? ACCESSIBLE_INSTRUCTION : HOLD_INSTRUCTION);
         if (level == AppFriction.Level.SLIGHT && touchExploration()) button.setText("Continue");
     }
 

@@ -93,7 +93,8 @@ public class LauncherSmokeTest extends Instrumentation {
                 find(root, "Back").performClick();
             });
             FrictionSmokeChecks.run(this, activity);
-            result.putString("stream", "Launcher home, search, and friction smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
+            MediaSmokeChecks.run(this, activity);
+            result.putString("stream", "Launcher home, search, friction, and media smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
             finish(Activity.RESULT_OK, result);
         } catch (Throwable error) {
             result.putString("stream", "FAILED: " + error + "\n");

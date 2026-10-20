@@ -5,6 +5,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.media.MediaMetadata;
 import android.media.session.MediaController;
@@ -17,6 +18,8 @@ import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -33,9 +36,10 @@ final class MediaControls extends LinearLayout {
     private final TextView artist;
     private final LinearLayout player;
     private final Button setup;
-    private final Button previous;
-    private final Button toggle;
-    private final Button next;
+    private final ImageButton previous;
+    private final ImageButton toggle;
+    private final ImageButton next;
+    private final ImageButton stopPlayback;
     private MediaController selected;
     private boolean started;
     private boolean listening;
@@ -67,21 +71,32 @@ final class MediaControls extends LinearLayout {
         player = new LinearLayout(context);
         player.setOrientation(VERTICAL);
         player.setPadding(0, dp(8), 0, dp(8));
-        title = text(17);
+        View divider = new View(context);
+        divider.setBackgroundColor(0xff333333);
+        LayoutParams dividerLayout = new LayoutParams(-1, dp(1));
+        dividerLayout.bottomMargin = dp(16);
+        player.addView(divider, dividerLayout);
+        title = text(18);
         artist = text(14);
+        artist.setPadding(0, dp(4), 0, 0);
         artist.setTextColor(Color.rgb(153, 153, 153));
         player.addView(title, new LayoutParams(-1, -2));
         player.addView(artist, new LayoutParams(-1, -2));
         LinearLayout buttons = new LinearLayout(context);
-        previous = control("Previous", () -> transport(PlaybackState.ACTION_SKIP_TO_PREVIOUS));
-        toggle = control("Pause", () -> transport(isPlaying(selected)
+        buttons.setPadding(0, dp(16), 0, dp(4));
+        previous = mediaControl("Previous track", R.drawable.ic_media_previous, false,
+            () -> transport(PlaybackState.ACTION_SKIP_TO_PREVIOUS));
+        toggle = mediaControl("Pause", R.drawable.ic_media_pause, true, () -> transport(isPlaying(selected)
             ? PlaybackState.ACTION_PAUSE : PlaybackState.ACTION_PLAY));
-        next = control("Next", () -> transport(PlaybackState.ACTION_SKIP_TO_NEXT));
-        previous.setContentDescription("Previous track");
-        next.setContentDescription("Next track");
-        buttons.addView(previous, new LayoutParams(0, -2, 1));
-        buttons.addView(toggle, new LayoutParams(0, -2, 1));
-        buttons.addView(next, new LayoutParams(0, -2, 1));
+        next = mediaControl("Next track", R.drawable.ic_media_next, false,
+            () -> transport(PlaybackState.ACTION_SKIP_TO_NEXT));
+        stopPlayback = mediaControl("Stop playback", R.drawable.ic_media_stop, false,
+            () -> transport(PlaybackState.ACTION_STOP));
+        for (ImageButton control : new ImageButton[] {previous, toggle, next, stopPlayback}) {
+            FrameLayout slot = new FrameLayout(context);
+            slot.addView(control, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER));
+            buttons.addView(slot, new LayoutParams(0, dp(56), 1));
+        }
         player.addView(buttons);
         addView(player, new LayoutParams(-1, -2));
     }
@@ -167,10 +182,16 @@ final class MediaControls extends LinearLayout {
         title.setText(TextUtils.isEmpty(track) ? appName(selected.getPackageName()) : track);
         artist.setText(performer);
         artist.setVisibility(TextUtils.isEmpty(performer) ? GONE : VISIBLE);
-        toggle.setText(isPlaying(selected) ? "Pause" : "Play");
+        boolean playing = isPlaying(selected);
+        toggle.setImageResource(playing ? R.drawable.ic_media_pause : R.drawable.ic_media_play);
+        toggle.setContentDescription(playing ? "Pause" : "Play");
+        toggle.setTooltipText(toggle.getContentDescription());
         enable(previous, supports(PlaybackState.ACTION_SKIP_TO_PREVIOUS));
         enable(toggle, supports(isPlaying(selected) ? PlaybackState.ACTION_PAUSE : PlaybackState.ACTION_PLAY));
         enable(next, supports(PlaybackState.ACTION_SKIP_TO_NEXT));
+        enable(stopPlayback, supports(PlaybackState.ACTION_STOP));
+        stopPlayback.setTooltipText(supports(PlaybackState.ACTION_STOP)
+            ? "Stop playback" : "This player does not support Stop");
     }
 
     private static boolean isPlaying(MediaController controller) {
@@ -207,6 +228,7 @@ final class MediaControls extends LinearLayout {
             else if (action == PlaybackState.ACTION_PAUSE) transport.pause();
             else if (action == PlaybackState.ACTION_SKIP_TO_PREVIOUS) transport.skipToPrevious();
             else if (action == PlaybackState.ACTION_SKIP_TO_NEXT) transport.skipToNext();
+            else if (action == PlaybackState.ACTION_STOP) transport.stop();
         } catch (SecurityException exception) {
             refreshAccess();
         }
@@ -256,6 +278,18 @@ final class MediaControls extends LinearLayout {
         button.setMinimumWidth(0);
         button.setMinHeight(dp(48));
         button.setGravity(Gravity.CENTER);
+        button.setOnClickListener(view -> action.run());
+        return button;
+    }
+
+    private ImageButton mediaControl(String label, int icon, boolean primary, Runnable action) {
+        ImageButton button = new ImageButton(getContext());
+        button.setImageResource(icon);
+        button.setImageTintList(ColorStateList.valueOf(primary ? Color.BLACK : ControlStyle.WHITE));
+        button.setContentDescription(label);
+        button.setTooltipText(label);
+        button.setPadding(dp(16), dp(16), dp(16), dp(16));
+        ControlStyle.rounded(button, primary);
         button.setOnClickListener(view -> action.run());
         return button;
     }

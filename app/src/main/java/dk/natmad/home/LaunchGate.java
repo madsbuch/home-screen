@@ -59,6 +59,7 @@ final class LaunchGate extends LinearLayout {
         button.setAllCaps(false);
         button.setTextColor(Color.rgb(225, 225, 225));
         button.setTextSize(20);
+        ControlStyle.pill(button, true);
         addView(button, new LayoutParams(-1, -2));
         button.setOnClickListener(view -> {
             if (!isAttachedToWindow() || !hasWindowFocus() || completed) return;
@@ -103,8 +104,11 @@ final class LaunchGate extends LinearLayout {
         Button back = new Button(context);
         back.setText("Go back");
         back.setAllCaps(false);
+        ControlStyle.pill(back, false);
         back.setOnClickListener(view -> cancel.run());
-        addView(back, new LayoutParams(-1, -2));
+        LayoutParams backLayout = new LayoutParams(-1, -2);
+        backLayout.topMargin = Math.round(12 * getResources().getDisplayMetrics().density);
+        addView(back, backLayout);
         reset();
     }
 

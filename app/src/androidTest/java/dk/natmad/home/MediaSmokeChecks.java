@@ -16,12 +16,13 @@ import java.util.function.BooleanSupplier;
 /** Uses real system media sessions and transport callbacks, without playing audio. */
 final class MediaSmokeChecks {
     private static final long ACTIONS = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE
-        | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS;
+        | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_STOP;
 
     static void run(Instrumentation test, Activity activity) {
         MediaSession[] session = {null};
         MediaSession[] other = {null};
         int[] previous = {0};
+        int[] stopped = {0};
         ViewGroup root = activity.findViewById(android.R.id.content);
         try {
             test.runOnMainSync(() -> {
@@ -32,6 +33,10 @@ final class MediaSmokeChecks {
                     @Override public void onPause() { state(session[0], PlaybackState.STATE_PAUSED, ACTIONS); }
                     @Override public void onSkipToNext() { metadata(session[0], "Second track"); }
                     @Override public void onSkipToPrevious() { previous[0]++; }
+                    @Override public void onStop() {
+                        stopped[0]++;
+                        state(session[0], PlaybackState.STATE_STOPPED, ACTIONS);
+                    }
                 }, new Handler(Looper.getMainLooper()));
                 metadata(session[0], "First track");
                 state(session[0], PlaybackState.STATE_PLAYING, ACTIONS);
@@ -40,14 +45,23 @@ final class MediaSmokeChecks {
             await(test, () -> visible(root, "First track") != null,
                 "Playing session missing; enable notification access for Quiet Home on the test emulator");
             await(test, () -> visible(root, "Test artist") != null, "Artist missing");
+            capture(test, "music-playing.png");
             test.runOnMainSync(() -> visible(root, "Pause").performClick());
             await(test, () -> visible(root, "Play") != null, "Pause must leave a resume control");
+            capture(test, "music-paused.png");
             test.runOnMainSync(() -> visible(root, "Play").performClick());
             await(test, () -> visible(root, "Pause") != null, "Play did not resume the session");
-            test.runOnMainSync(() -> visible(root, "Next").performClick());
+            test.runOnMainSync(() -> visible(root, "Next track").performClick());
             await(test, () -> visible(root, "Second track") != null, "Track metadata did not update");
-            test.runOnMainSync(() -> visible(root, "Previous").performClick());
+            test.runOnMainSync(() -> visible(root, "Previous track").performClick());
             await(test, () -> previous[0] == 1, "Previous did not reach the player");
+            test.runOnMainSync(() -> visible(root, "Pause").performClick());
+            await(test, () -> visible(root, "Play") != null, "Pause before stop failed");
+            test.runOnMainSync(() -> visible(root, "Stop playback").performClick());
+            await(test, () -> stopped[0] == 1 && visible(root, "Stop playback") == null,
+                "Stop must reach the paused player and remove the stopped session from home");
+            test.runOnMainSync(() -> state(session[0], PlaybackState.STATE_PLAYING, ACTIONS));
+            await(test, () -> visible(root, "Pause") != null, "New playback must restore the controls");
             test.runOnMainSync(() -> {
                 state(session[0], PlaybackState.STATE_PLAYING, PlaybackState.ACTION_PAUSE);
                 other[0] = new MediaSession(activity, "Paused competing player");
@@ -55,13 +69,21 @@ final class MediaSmokeChecks {
                 state(other[0], PlaybackState.STATE_PAUSED, PlaybackState.ACTION_PLAY);
                 other[0].setActive(true);
             });
-            await(test, () -> visible(root, "Next") != null && !visible(root, "Next").isEnabled(),
+            await(test, () -> visible(root, "Next track") != null && !visible(root, "Next track").isEnabled(),
                 "Unsupported skip action must be disabled");
-            test.runOnMainSync(() -> require(visible(root, "Second track") != null,
-                "Paused session displaced playing session"));
-            test.runOnMainSync(() -> state(session[0], PlaybackState.STATE_STOPPED, ACTIONS));
+            test.runOnMainSync(() -> {
+                require(visible(root, "Second track") != null, "Paused session displaced playing session");
+                require(!visible(root, "Stop playback").isEnabled(), "Unsupported stop must be disabled");
+                visible(root, "Stop playback").performClick();
+                require(stopped[0] == 1, "Unsupported stop reached the player");
+                state(session[0], PlaybackState.STATE_PLAYING, ACTIONS);
+            });
+            await(test, () -> visible(root, "Stop playback").isEnabled(), "Stop must track changing player capabilities");
+            test.runOnMainSync(() -> visible(root, "Stop playback").performClick());
             await(test, () -> visible(root, "Paused other track") != null,
                 "Stopped session should yield to resumable session");
+            test.runOnMainSync(() -> require(stopped[0] == 2,
+                "Stop should reach only the selected playing session"));
             test.runOnMainSync(() -> {
                 other[0].release();
                 session[0].release();
@@ -112,14 +134,15 @@ final class MediaSmokeChecks {
         throw new AssertionError(failure);
     }
 
-    private static TextView visible(View view, String label) {
+    private static View visible(View view, String label) {
         if (view.getVisibility() != View.VISIBLE) return null;
+        if (label.contentEquals(view.getContentDescription() == null ? "" : view.getContentDescription())) return view;
         if (view instanceof TextView && ((TextView) view).getText().toString().equals(label))
             return (TextView) view;
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
-                TextView found = visible(group.getChildAt(i), label);
+                View found = visible(group.getChildAt(i), label);
                 if (found != null) return found;
             }
         }
@@ -128,5 +151,19 @@ final class MediaSmokeChecks {
 
     private static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
+    }
+
+    private static void capture(Instrumentation test, String name) {
+        test.waitForIdleSync();
+        android.graphics.Bitmap screenshot = test.getUiAutomation().takeScreenshot();
+        require(screenshot != null, "Could not capture media layout");
+        try (java.io.FileOutputStream output = new java.io.FileOutputStream(
+                new java.io.File(test.getTargetContext().getCacheDir(), name))) {
+            screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output);
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not save media layout", exception);
+        } finally {
+            screenshot.recycle();
+        }
     }
 }

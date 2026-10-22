@@ -94,7 +94,8 @@ public class LauncherSmokeTest extends Instrumentation {
             });
             FrictionSmokeChecks.run(this, activity);
             MediaSmokeChecks.run(this, activity);
-            result.putString("stream", "Launcher home, search, friction, and media smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
+            DisplayModeSmokeChecks.run(this, activity);
+            result.putString("stream", "Launcher home, search, friction, media, and display mode smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
             finish(Activity.RESULT_OK, result);
         } catch (Throwable error) {
             result.putString("stream", "FAILED: " + error + "\n");

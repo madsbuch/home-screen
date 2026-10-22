@@ -68,6 +68,9 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         resumed = true;
+        // Reconcile even when Android restores the drawer rather than home.
+        try { new DisplayMode(this).reconcile(); }
+        catch (RuntimeException error) { android.util.Log.e("QuietHome", "Unable to restore display mode", error); }
         refreshApps();
         selectHomeApps();
         if (screen.equals("home")) showHome();
@@ -198,6 +201,7 @@ public class MainActivity extends Activity {
         mediaControls = new MediaControls(this);
         root.addView(mediaControls, new LinearLayout.LayoutParams(-1, -2));
         if (resumed) mediaControls.start();
+        root.addView(new DisplayModeControl(this), new LinearLayout.LayoutParams(-1, -2));
         root.addView(action("Everything else", 17, WHITE, () -> showList(true)));
     }
 

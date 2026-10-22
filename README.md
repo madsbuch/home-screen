@@ -1,6 +1,6 @@
 # Quiet Home
 
-A native Android launcher: black background, a clock, and app names with small generated monochrome marks. The only home-screen navigation is **Everything else**. No feed, branded app icons, badges, ads, analytics, or network permission.
+A native Android launcher: black background, a clock, and app names with small generated monochrome marks. Home includes **Everything else** and a phone-wide monochrome/color toggle. No feed, branded app icons, badges, ads, analytics, or network permission.
 
 ## Configure home in code
 
@@ -31,6 +31,22 @@ Requires Android 8.0 or later. GitHub publishes a release APK signed with a pers
 
 For a local development build, transfer `app/build/outputs/apk/debug/app-debug.apk` to the phone instead. Keep debug builds separate from the release installation.
 
+## Monochrome and colors
+
+Tap **Set up monochrome** on home for the one-time setup. Android does not let ordinary apps change the whole phone's color mode through a runtime permission dialog. With USB debugging enabled and the phone connected to a computer with Android platform tools, run:
+
+```sh
+adb shell pm grant dk.natmad.home android.permission.WRITE_SECURE_SETTINGS
+```
+
+Return to Quiet Home: monochrome is now the default across the whole phone, including other apps. Tap **Colors for 12 hours** to temporarily enable colors. On Android 12 and later, the first use directs you to allow **Alarms & reminders**; return and tap the button again. **Use monochrome** switches back immediately and cancels the current window. Each new color window lasts at most 12 hours, with its return time shown below the button. Quiet Home's own minimal styling stays the same.
+
+The deadline is saved in device-protected storage. An exact wake-up alarm restores monochrome even when Quiet Home is in the background or the phone is asleep. Restarting the launcher does not extend the deadline; boot and app-update receivers restore it, including before first unlock. Elapsed time prevents a backwards clock change from extending a window during the same boot. After reboot, the saved wall-clock deadline is used; an invalid deadline falls back to monochrome.
+
+This uses Android's AOSP secure color-correction settings and replaces existing color correction. Manufacturer behavior still needs physical-device testing. As with other Android alarms, force-stopping the app or revoking its permissions can prevent the reset; reopening Quiet Home reconciles the deadline if display access remains granted. A powered-off phone reconciles on boot. Removing Quiet Home does not undo the system color setting. To disable grayscale manually, use Developer options → Simulate color space → Disabled, or run `adb shell settings put secure accessibility_display_daltonizer_enabled 0`.
+
+Implementation references: [Android exact alarms](https://developer.android.com/develop/background-work/services/alarms) and [AOSP display adjustment](https://android.googlesource.com/platform/frameworks/base/+/3625bf7/services/accessibility/java/com/android/server/accessibility/DisplayAdjustmentUtils.java).
+
 ## Music controls
 
 Tap **Enable music controls** on home, then grant notification access to **Quiet Home music controls** in Android Settings. This is Android's permission for discovering other apps' [active media sessions](https://developer.android.com/reference/android/media/session/MediaSessionManager). Quiet Home does not read or store notification contents.
@@ -57,7 +73,7 @@ The status area reserves enough space for every instruction and countdown messag
 
 The package lists cover the named apps, not every possible third-party client or future chat app. Add their exact IDs in code as needed. Package IDs can be checked in the `id=` parameter of an app's official Play Store link, for example [YouTube](https://play.google.com/store/apps/details?id=com.google.android.youtube), [Claude](https://play.google.com/store/apps/details?id=com.anthropic.claude), and [Gemini](https://play.google.com/store/apps/details?id=com.google.android.apps.bard).
 
-This is friction inside Quiet Home, not a system-wide app blocker. Notifications, links, Recents, assistant gestures, and websites can bypass it. Opening friction itself requires no extra permission, phone connection, or background monitoring. Grayscale control is not included.
+This is friction inside Quiet Home, not a system-wide app blocker. Notifications, links, Recents, assistant gestures, and websites can bypass it. Opening friction itself requires no extra permission, phone connection, or background monitoring. The optional phone-wide grayscale control has its own setup described above.
 
 ## GitHub builds
 
@@ -106,9 +122,11 @@ sh scripts/test-rules.sh
 adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb -s emulator-5554 shell cmd notification allow_listener dk.natmad.home/dk.natmad.home.MediaAccessService
+adb -s emulator-5554 shell pm grant dk.natmad.home android.permission.WRITE_SECURE_SETTINGS
+adb -s emulator-5554 shell appops set dk.natmad.home SCHEDULE_EXACT_ALARM allow
 adb -s emulator-5554 shell am instrument -w dk.natmad.home.test/dk.natmad.home.LauncherSmokeTest
 ```
 
-The rule checks cover search normalization, exact package classification, and duplicate category membership. The instrumentation test verifies home ordering, the full alphabetical drawer, search, and a real YouTube launch attempt when installed. It also runs the actual 30-second countdown and 3-second hold, checking early activation, release/cancellation, focus loss, duplicate activation, detaching the view, and stable button placement with narrow layouts and large text. Real test media sessions exercise play/pause, previous/next, Stop during playing and paused playback, metadata updates, unsupported actions, session priority, stopped/released sessions, and returning home. They do not play audio. The emulator needs at least one configured home app installed, notification access enabled as above, and touch-exploration off for physical-hold tests. Revoke the test grant afterwards with `adb -s emulator-5554 shell cmd notification disallow_listener dk.natmad.home/dk.natmad.home.MediaAccessService`.
+The rule checks cover search normalization, exact package classification, duplicate category membership, and color-window expiry boundaries, clock changes, and reboot deadlines. Display instrumentation checks the actual secure settings, manual reset, deadline persistence, reboot recovery, and an accelerated OS alarm while another app is foregrounded. These checks leave the emulator in monochrome. The instrumentation test verifies home ordering, the full alphabetical drawer, search, and a real YouTube launch attempt when installed. It also runs the actual 30-second countdown and 3-second hold, checking early activation, release/cancellation, focus loss, duplicate activation, detaching the view, and stable button placement with narrow layouts and large text. Real test media sessions exercise play/pause, previous/next, Stop during playing and paused playback, metadata updates, unsupported actions, session priority, stopped/released sessions, and returning home. They do not play audio. The emulator needs at least one configured home app installed, notification access enabled as above, and touch-exploration off for physical-hold tests. Revoke the test grant afterwards with `adb -s emulator-5554 shell cmd notification disallow_listener dk.natmad.home/dk.natmad.home.MediaAccessService`.
 
 Physical-device behavior and Android 8–13/15+ still need testing. Lint may report non-blocking notices about newer SDK/Gradle versions and backup configuration. Earlier screenshots in `docs/` show previous versions.

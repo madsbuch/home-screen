@@ -39,14 +39,20 @@ public final class DisplayMode extends BroadcastReceiver {
 
     private AlarmManager alarms() { return context.getSystemService(AlarmManager.class); }
 
-    private int boot() {
-        return Settings.Global.getInt(context.getContentResolver(), Settings.Global.BOOT_COUNT, -1);
+    private long enabledAt() {
+        SharedPreferences prefs = preferences();
+        if (!prefs.contains("enabled_at") && prefs.contains("wall")) {
+            // Upgrade the previous deadline format once, retaining the original switch time.
+            long started = prefs.getLong("wall", 0) - ColorWindow.DURATION;
+            SharedPreferences.Editor edit = prefs.edit().clear();
+            if (started > 0) edit.putLong("enabled_at", started);
+            if (!edit.commit()) throw new IllegalStateException("Could not migrate color state");
+        }
+        return prefs.getLong("enabled_at", 0);
     }
 
     long remaining() {
-        SharedPreferences prefs = preferences();
-        return ColorWindow.remaining(prefs.getLong("wall", 0), prefs.getLong("elapsed", 0),
-            prefs.getInt("boot", -2), System.currentTimeMillis(), SystemClock.elapsedRealtime(), boot());
+        return ColorWindow.remaining(enabledAt(), System.currentTimeMillis());
     }
 
     private PendingIntent resetIntent() {
@@ -71,19 +77,17 @@ public final class DisplayMode extends BroadcastReceiver {
     void monochrome() {
         apply(false);
         if (!preferences().edit().clear().commit())
-            throw new IllegalStateException("Could not clear the color deadline");
+            throw new IllegalStateException("Could not clear the color state");
         alarms().cancel(resetIntent());
     }
 
     void colors() {
         if (!hasAccess() || !hasAlarmAccess()) throw new IllegalStateException("Setup is incomplete");
-        if (!preferences().edit().putLong("wall", System.currentTimeMillis() + ColorWindow.DURATION)
-                .putLong("elapsed", SystemClock.elapsedRealtime() + ColorWindow.DURATION)
-                .putInt("boot", boot()).commit())
-            throw new IllegalStateException("Could not save the reset time");
+        if (!preferences().edit().clear().putLong("enabled_at", System.currentTimeMillis()).commit())
+            throw new IllegalStateException("Could not save when colors were enabled");
         try {
-            // Never enable colors until both the deadline and the reset alarm exist.
-            schedule(preferences().getLong("elapsed", 0));
+            // The wake-up only checks the timestamp; it does not hold the color state.
+            schedule(SystemClock.elapsedRealtime() + remaining());
             apply(true);
         } catch (RuntimeException error) {
             monochrome();
@@ -93,23 +97,11 @@ public final class DisplayMode extends BroadcastReceiver {
 
     void reconcile() {
         if (!hasAccess()) return;
-        SharedPreferences prefs = preferences();
-        long wallNow = System.currentTimeMillis();
-        long elapsedNow = SystemClock.elapsedRealtime();
-        int currentBoot = boot();
-        long left = ColorWindow.remaining(prefs.getLong("wall", 0), prefs.getLong("elapsed", 0),
-            prefs.getInt("boot", -2), wallNow, elapsedNow, currentBoot);
+        long left = remaining();
         if (left == 0 || !hasAlarmAccess()) monochrome();
         else {
-            // Re-anchor elapsed time after reboot without extending the saved window.
-            if (!prefs.edit().putLong("wall", wallNow + left)
-                    .putLong("elapsed", elapsedNow + left)
-                    .putInt("boot", currentBoot).commit()) {
-                monochrome();
-                return;
-            }
             try {
-                schedule(elapsedNow + left);
+                schedule(SystemClock.elapsedRealtime() + left);
                 apply(true);
             } catch (RuntimeException error) {
                 monochrome();

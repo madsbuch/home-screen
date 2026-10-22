@@ -6,36 +6,26 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.provider.Settings;
-import android.view.View;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.widget.ImageButton;
 import android.widget.Toast;
-import java.util.Date;
 
-final class DisplayModeControl extends LinearLayout {
+/** A small icon; the surrounding 48dp target remains easy to tap. */
+final class DisplayModeControl extends ImageButton {
     private final Activity activity;
     private final DisplayMode mode;
-    private final Button toggle;
-    private final TextView status;
     private final Runnable refresh = this::refresh;
 
     DisplayModeControl(Activity activity) {
         super(activity);
         this.activity = activity;
         mode = new DisplayMode(activity);
-        setOrientation(VERTICAL);
-        toggle = new Button(activity);
-        toggle.setTextSize(16);
-        ControlStyle.pill(toggle, false);
-        addView(toggle, new LayoutParams(-1, -2));
-        status = new TextView(activity);
-        status.setTextColor(0xff999999);
-        status.setTextSize(12);
-        status.setPadding(0, 4, 0, 4);
-        status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        addView(status, new LayoutParams(-1, -2));
-        toggle.setOnClickListener(view -> toggle());
+        int padding = Math.round(12 * getResources().getDisplayMetrics().density);
+        setPadding(padding, padding, padding, padding);
+        setScaleType(ScaleType.CENTER_INSIDE);
+        android.util.TypedValue background = new android.util.TypedValue();
+        activity.getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, background, true);
+        setBackgroundResource(background.resourceId);
+        setOnClickListener(view -> toggle());
     }
 
     @Override protected void onAttachedToWindow() {
@@ -53,15 +43,14 @@ final class DisplayModeControl extends LinearLayout {
         try {
             mode.reconcile();
             long left = mode.remaining();
-            toggle.setText(!mode.hasAccess() ? "Set up monochrome" : left > 0 ? "Use monochrome" : "Colors for 12 hours");
-            status.setText(!mode.hasAccess() ? "Control colors across your whole phone."
-                : left > 0 ? "Monochrome returns at " + android.text.format.DateFormat.getTimeFormat(activity)
-                    .format(new Date(System.currentTimeMillis() + left))
-                : "Monochrome · whole phone");
+            setImageResource(left > 0 ? R.drawable.ic_display_color : R.drawable.ic_display_monochrome);
+            String label = !mode.hasAccess() ? "Set up monochrome" : left > 0 ? "Use monochrome" : "Turn on colors";
+            setContentDescription(label);
+            setTooltipText(label);
             if (left > 0) postDelayed(refresh, left);
         } catch (RuntimeException error) {
-            toggle.setText("Set up monochrome");
-            status.setText("Display control unavailable. Tap to check setup.");
+            setImageResource(R.drawable.ic_display_monochrome);
+            setContentDescription("Display control unavailable. Check monochrome setup.");
         }
     }
 
@@ -70,14 +59,14 @@ final class DisplayModeControl extends LinearLayout {
             new AlertDialog.Builder(activity).setTitle("Set up phone-wide monochrome")
                 .setMessage("Android needs a one-time grant from a computer with USB debugging enabled. "
                     + "Connect your phone and run:\n\nadb shell pm grant dk.natmad.home android.permission.WRITE_SECURE_SETTINGS"
-                    + "\n\nThen return here. Monochrome becomes the default; the button enables colors for 12 hours. "
+                    + "\n\nThen return here. Monochrome becomes the default; the icon switches colors on or off. "
                     + "This uses Android’s color correction setting and replaces any existing color correction.")
                 .setPositiveButton("Done", (dialog, which) -> refresh()).show();
             return;
         }
         if (mode.remaining() == 0 && !mode.hasAlarmAccess()) {
-            new AlertDialog.Builder(activity).setTitle("Allow the 12-hour reset")
-                .setMessage("Allow Quiet Home under Alarms & reminders so monochrome can return while other apps are open or the phone is asleep. Then tap Colors for 12 hours again.")
+            new AlertDialog.Builder(activity).setTitle("Allow automatic monochrome")
+                .setMessage("Allow Quiet Home under Alarms & reminders so it can check how long colors have been on, even while another app is open or the phone is asleep. Then return and tap the icon again.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Open settings", (dialog, which) -> {
                     try {

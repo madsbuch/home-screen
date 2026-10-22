@@ -172,6 +172,8 @@ public class MainActivity extends Activity {
         searchQuery = "";
         searchResults = null;
         page("home");
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
         TextClock clock = new TextClock(this);
         clock.setFormat12Hour("h:mm");
         clock.setFormat24Hour("HH:mm");
@@ -179,8 +181,14 @@ public class MainActivity extends Activity {
         clock.setTextSize(64);
         clock.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
         clock.setIncludeFontPadding(false);
+        clock.setSingleLine(true);
+        clock.setAutoSizeTextTypeUniformWithConfiguration(32, 64, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
         clock.setPadding(0, dp(14), 0, 0);
-        root.addView(clock);
+        header.addView(clock, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams displayParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+        displayParams.setMarginStart(dp(12));
+        header.addView(new DisplayModeControl(this), displayParams);
+        root.addView(header);
         TextClock date = new TextClock(this);
         date.setFormat12Hour("EEEE, d MMMM");
         date.setFormat24Hour("EEEE, d MMMM");
@@ -201,7 +209,6 @@ public class MainActivity extends Activity {
         mediaControls = new MediaControls(this);
         root.addView(mediaControls, new LinearLayout.LayoutParams(-1, -2));
         if (resumed) mediaControls.start();
-        root.addView(new DisplayModeControl(this), new LinearLayout.LayoutParams(-1, -2));
         root.addView(action("Everything else", 17, WHITE, () -> showList(true)));
     }
 

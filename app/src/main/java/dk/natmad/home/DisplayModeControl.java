@@ -2,10 +2,6 @@ package dk.natmad.home;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
-import android.content.Intent;
-import android.net.Uri;
-import android.provider.Settings;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
@@ -13,7 +9,6 @@ import android.widget.Toast;
 final class DisplayModeControl extends ImageButton {
     private final Activity activity;
     private final DisplayMode mode;
-    private final Runnable refresh = this::refresh;
 
     DisplayModeControl(Activity activity) {
         super(activity);
@@ -33,13 +28,7 @@ final class DisplayModeControl extends ImageButton {
         refresh();
     }
 
-    @Override protected void onDetachedFromWindow() {
-        removeCallbacks(refresh);
-        super.onDetachedFromWindow();
-    }
-
     private void refresh() {
-        removeCallbacks(refresh);
         try {
             mode.reconcile();
             long left = mode.remaining();
@@ -47,7 +36,6 @@ final class DisplayModeControl extends ImageButton {
             String label = !mode.hasAccess() ? "Set up monochrome" : left > 0 ? "Use monochrome" : "Turn on colors";
             setContentDescription(label);
             setTooltipText(label);
-            if (left > 0) postDelayed(refresh, left);
         } catch (RuntimeException error) {
             setImageResource(R.drawable.ic_display_monochrome);
             setContentDescription("Display control unavailable. Check monochrome setup.");
@@ -64,22 +52,8 @@ final class DisplayModeControl extends ImageButton {
                 .setPositiveButton("Done", (dialog, which) -> refresh()).show();
             return;
         }
-        if (mode.remaining() == 0 && !mode.hasAlarmAccess()) {
-            new AlertDialog.Builder(activity).setTitle("Allow automatic monochrome")
-                .setMessage("Allow Quiet Home under Alarms & reminders so it can check how long colors have been on, even while another app is open or the phone is asleep. Then return and tap the icon again.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Open settings", (dialog, which) -> {
-                    try {
-                        activity.startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                            Uri.parse("package:" + activity.getPackageName())));
-                    } catch (ActivityNotFoundException error) {
-                        Toast.makeText(activity, "Open Android Settings → Apps → Special app access → Alarms & reminders.", Toast.LENGTH_LONG).show();
-                    }
-                }).show();
-            return;
-        }
         try {
-            if (mode.remaining() > 0) mode.monochrome();
+            if (mode.colorsSelected()) mode.monochrome();
             else mode.colors();
         } catch (RuntimeException error) {
             Toast.makeText(activity, "Could not change display colors. Check monochrome setup.", Toast.LENGTH_LONG).show();

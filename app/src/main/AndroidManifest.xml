@@ -3,8 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools">
     <!-- Granted once through adb; a normal runtime permission dialog cannot grant this. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -21,15 +19,6 @@
         android:icon="@drawable/launcher_mark"
         android:theme="@style/AppTheme"
         android:supportsRtl="true">
-        <receiver android:name=".DisplayMode" android:exported="false" android:directBootAware="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.TIME_SET" />
-                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
-            </intent-filter>
-        </receiver>
         <service android:name=".MediaAccessService"
             android:label="Quiet Home music controls"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"

@@ -13,7 +13,6 @@ final class DisplayModeSmokeChecks {
         Context context = test.getTargetContext();
         DisplayMode mode = new DisplayMode(context);
         require(mode.hasAccess(), "Grant WRITE_SECURE_SETTINGS to run display checks");
-        require(mode.hasAlarmAccess(), "Allow Alarms & reminders to run display checks");
         SharedPreferences prefs = context.createDeviceProtectedStorageContext()
             .getSharedPreferences("display_mode", Context.MODE_PRIVATE);
         try {
@@ -41,17 +40,15 @@ final class DisplayModeSmokeChecks {
             new DisplayMode(context).reconcile();
             require(mode.remaining() <= left, "Reopening must preserve the original switch-on time");
             require(prefs.getLong("enabled_at", 0) == enabledAt, "Checks must not rewrite the timestamp");
-            new DisplayMode().onReceive(context, new Intent("dk.natmad.home.RESET_MONOCHROME"));
-            require(!monochrome(context), "Stale alarm must not end a fresh color window");
             mode.monochrome();
             require(monochrome(context) && mode.remaining() == 0, "Manual toggle must clear the timestamp");
 
             mode.colors();
             long earlier = System.currentTimeMillis() - ColorWindow.DURATION + 60_000;
             prefs.edit().putLong("enabled_at", earlier).commit();
-            new DisplayMode().onReceive(context, new Intent(Intent.ACTION_BOOT_COMPLETED));
-            require(mode.remaining() > 55_000 && mode.remaining() <= 60_000, "Reboot checks the original switch-on time");
-            require(prefs.getLong("enabled_at", 0) == earlier, "Boot must not rewrite the timestamp");
+            new DisplayMode(context).reconcile();
+            require(mode.remaining() > 55_000 && mode.remaining() <= 60_000, "A new controller checks the original switch-on time");
+            require(prefs.getLong("enabled_at", 0) == earlier, "Recreating the controller must not rewrite the timestamp");
 
             // Upgrade an active color session from the released deadline-based version.
             prefs.edit().clear().putLong("wall", earlier + ColorWindow.DURATION)
@@ -59,14 +56,30 @@ final class DisplayModeSmokeChecks {
             mode.reconcile();
             require(prefs.getLong("enabled_at", 0) == earlier && !prefs.contains("wall"), "Upgrade must retain the switch time");
 
-            // Age the saved timestamp, exercising the actual OS wake-up and manifest receiver.
-            prefs.edit().putLong("enabled_at", System.currentTimeMillis() - ColorWindow.DURATION + 1200).commit();
+            Intent oldReset = new Intent().setClassName(context, "dk.natmad.home.DisplayMode")
+                .setAction("dk.natmad.home.RESET_MONOCHROME");
+            android.app.PendingIntent legacy = android.app.PendingIntent.getBroadcast(context, 0, oldReset,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+            context.getSystemService(android.app.AlarmManager.class).set(android.app.AlarmManager.ELAPSED_REALTIME,
+                SystemClock.elapsedRealtime() + 60_000, legacy);
             mode.reconcile();
+            require(android.app.PendingIntent.getBroadcast(context, 0, oldReset,
+                android.app.PendingIntent.FLAG_NO_CREATE | android.app.PendingIntent.FLAG_IMMUTABLE) == null,
+                "Upgrade must cancel the old reset alarm");
+
+            // Expiry while another app is open must wait for the next return home.
             test.runOnMainSync(() -> activity.startActivity(new Intent(Settings.ACTION_SETTINGS)));
-            long timeout = SystemClock.elapsedRealtime() + 10_000;
-            while (!monochrome(context) && SystemClock.elapsedRealtime() < timeout) SystemClock.sleep(100);
-            require(monochrome(context), "Alarm must restore monochrome while another app is open");
-            require(!prefs.contains("enabled_at"), "Check must clear the expired timestamp");
+            test.waitForIdleSync();
+            prefs.edit().putLong("enabled_at", System.currentTimeMillis() - ColorWindow.DURATION - 1).commit();
+            SystemClock.sleep(1500);
+            require(!monochrome(context), "Colors must stay on while another app is open");
+            test.runOnMainSync(() -> activity.startActivity(new Intent(context, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+            test.waitForIdleSync();
+            long timeout = SystemClock.elapsedRealtime() + 5000;
+            while (!monochrome(context) && SystemClock.elapsedRealtime() < timeout) SystemClock.sleep(50);
+            require(monochrome(context), "Returning home must restore monochrome for an old timestamp");
+            require(!prefs.contains("enabled_at"), "Returning home clears the expired timestamp");
         } finally {
             mode.monochrome();
             test.runOnMainSync(() -> activity.startActivity(new Intent(context, MainActivity.class)

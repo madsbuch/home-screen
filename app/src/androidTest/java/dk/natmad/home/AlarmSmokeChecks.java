@@ -3,6 +3,7 @@ package dk.natmad.home;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.Instrumentation;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -44,6 +45,10 @@ final class AlarmSmokeChecks {
             AlarmControl control = new AlarmControl(context, () -> next[0]);
             String originalFormat = Settings.System.getString(activity.getContentResolver(), Settings.System.TIME_12_24);
             TimeZone originalZone = TimeZone.getDefault();
+            // Accepted by Android, but deliberately has no receiver and opens no UI.
+            PendingIntent silentShortcut = PendingIntent.getBroadcast(activity, 1701,
+                new Intent("dk.natmad.home.TEST_ALARM_SHORTCUT").setPackage(activity.getPackageName()),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             try {
                 TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
                 Settings.System.putString(activity.getContentResolver(), Settings.System.TIME_12_24, "24");
@@ -64,6 +69,14 @@ final class AlarmSmokeChecks {
                     require(context.opened != null && Intent.ACTION_MAIN.equals(context.opened.getAction())
                             && context.opened.getComponent() != null,
                         "Missing or protected SHOW_ALARMS must fall back to a real alarm app's launch activity");
+                    android.content.ComponentName clockApp = context.opened.getComponent();
+                    next[0] = new AlarmManager.AlarmClockInfo(System.currentTimeMillis() + 3_600_000, silentShortcut);
+                    context.change(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED);
+                    context.opened = null;
+                    control.performClick();
+                    require(context.opened != null && clockApp.equals(context.opened.getComponent()),
+                        "A set alarm with a silent shortcut must still open the same Clock app");
+                    next[0] = null;
                 }
                 context.rejectShowAlarms = 0;
 
@@ -96,6 +109,7 @@ final class AlarmSmokeChecks {
                 root.removeView(control);
                 require(context.receiver == null, "Detached alarm controls must stop observing");
             } finally {
+                silentShortcut.cancel();
                 control.stop();
                 Settings.System.putString(activity.getContentResolver(), Settings.System.TIME_12_24, originalFormat);
                 TimeZone.setDefault(originalZone);

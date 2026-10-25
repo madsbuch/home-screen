@@ -106,17 +106,7 @@ final class AlarmControl extends Button {
             getContext().startActivity(new Intent(AlarmClock.ACTION_SHOW_ALARMS));
             return;
         } catch (ActivityNotFoundException | SecurityException unavailable) {
-            // Some alarm apps only supply a PendingIntent for their scheduled alarm.
-        }
-        AlarmManager.AlarmClockInfo alarm = nextAlarm.get();
-        PendingIntent show = alarm == null ? null : alarm.getShowIntent();
-        if (show != null) {
-            try {
-                show.send();
-                return;
-            } catch (PendingIntent.CanceledException | SecurityException unavailable) {
-                // The alarm or its app may have been removed since the last refresh.
-            }
+            // Try the Clock app's normal entry point next, whether an alarm is set or not.
         }
         // Some vendor clocks omit SHOW_ALARMS or protect it with a permission.
         // Discover their alarm capability, then open their normal launcher entry.
@@ -127,6 +117,19 @@ final class AlarmControl extends Button {
                 return;
             } catch (ActivityNotFoundException | SecurityException unavailable) {
                 // An app can disappear or be disabled after discovery; try the next.
+            }
+        }
+        // A successful send does not guarantee that a vendor shortcut opens a screen.
+        // Use it only when no normal Clock entry point is available, so setting an
+        // alarm cannot bypass a working app launch (notably on OnePlus).
+        AlarmManager.AlarmClockInfo alarm = nextAlarm.get();
+        PendingIntent show = alarm == null ? null : alarm.getShowIntent();
+        if (show != null) {
+            try {
+                show.send();
+                return;
+            } catch (PendingIntent.CanceledException | SecurityException unavailable) {
+                // The alarm or its app may have been removed since the last refresh.
             }
         }
         refresh();

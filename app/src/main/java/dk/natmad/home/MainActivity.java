@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
     private String searchQuery = "";
     private LinearLayout searchResults;
     private MediaControls mediaControls;
+    private AlarmControl alarmControl;
     private boolean resumed;
 
     private static class App {
@@ -86,6 +87,7 @@ public class MainActivity extends Activity {
     @Override protected void onPause() {
         resumed = false;
         if (mediaControls != null) mediaControls.stop();
+        if (alarmControl != null) alarmControl.stop();
         // A backgrounded attempt must never finish or retain credit toward opening an app.
         if (screen.equals("gate")) showHome();
         super.onPause();
@@ -145,6 +147,8 @@ public class MainActivity extends Activity {
     private LinearLayout page(String name) {
         if (mediaControls != null) mediaControls.stop();
         mediaControls = null;
+        if (alarmControl != null) alarmControl.stop();
+        alarmControl = null;
         screen = name;
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -194,8 +198,13 @@ public class MainActivity extends Activity {
         date.setFormat24Hour("EEEE, d MMMM");
         date.setTextColor(MUTED);
         date.setTextSize(15);
-        date.setPadding(0, dp(6), 0, dp(22));
+        date.setPadding(0, dp(6), 0, dp(4));
         root.addView(date);
+        alarmControl = new AlarmControl(this);
+        LinearLayout.LayoutParams alarmParams = new LinearLayout.LayoutParams(-2, -2);
+        alarmParams.bottomMargin = dp(8);
+        root.addView(alarmControl, alarmParams);
+        if (resumed) alarmControl.start();
 
         LinearLayout favorites = scrollArea();
         for (String id : home.keySet()) {

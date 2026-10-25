@@ -47,6 +47,14 @@ This uses Android's AOSP secure color-correction settings and replaces existing 
 
 Implementation reference: [AOSP display adjustment](https://android.googlesource.com/platform/frameworks/base/+/3625bf7/services/accessibility/java/com/android/server/accessibility/DisplayAdjustmentUtils.java).
 
+## Alarms
+
+Tap the small, muted alarm icon beneath the date to open your alarm app's alarms screen. When an alarm is scheduled, a compact day and time appears beside it (for example, **Mon 07:00**), following the phone's 12/24-hour setting. With no alarm set, only the icon remains. There is no box or extra visible label. The touch target stays at least 48dp, and screen readers announce the full next-alarm date and time or the empty state.
+
+The indicator uses Android's [next alarm clock](https://developer.android.com/reference/android/app/AlarmManager#getNextAlarmClock()) for the current user. Alarm apps must publish their alarms through Android's alarm-clock API to appear here; ordinary timers, calendar reminders, and apps that do not publish an alarm clock are not included. No new permission or setup is required. The row updates while home is visible and refreshes on return, including after alarm, clock, or time-zone changes.
+
+Opening uses Android's [Show alarms action](https://developer.android.com/reference/android/provider/AlarmClock#ACTION_SHOW_ALARMS), with the next alarm's own shortcut as a fallback if no app handles that action. If neither is available, Quiet Home displays a message.
+
 ## Music controls
 
 Tap **Enable music controls** on home, then grant notification access to **Quiet Home music controls** in Android Settings. This is Android's permission for discovering other apps' [active media sessions](https://developer.android.com/reference/android/media/session/MediaSessionManager). Quiet Home does not read or store notification contents.
@@ -127,5 +135,7 @@ adb -s emulator-5554 shell am instrument -w dk.natmad.home.test/dk.natmad.home.L
 ```
 
 The rule checks cover search normalization, exact package classification, duplicate category membership, and timestamp age, the 12-hour boundary, and invalid timestamps. Display instrumentation checks the actual secure settings, the compact accessible icon, manual reset, timestamp persistence, upgrade migration, preserving colors in another app, and restoring monochrome on return home after the saved timestamp expires. These checks leave the emulator in monochrome. The instrumentation test verifies home ordering, the full alphabetical drawer, search, and a real YouTube launch attempt when installed. It also runs the actual 30-second countdown and 3-second hold, checking early activation, release/cancellation, focus loss, duplicate activation, detaching the view, and stable button placement with narrow layouts and large text. Real test media sessions exercise play/pause, previous/next, Stop during playing and paused playback, metadata updates, unsupported actions, session priority, stopped/released sessions, and returning home. They do not play audio. The emulator needs at least one configured home app installed, notification access enabled as above, and touch-exploration off for physical-hold tests. Revoke the test grant afterwards with `adb -s emulator-5554 shell cmd notification disallow_listener dk.natmad.home/dk.natmad.home.MediaAccessService`.
+
+Alarm instrumentation checks the real home row against the system's next alarm, then uses controlled alarm data and broadcasts to check empty/scheduled/cancelled states, opening alarms, a missing alarm app, 12/24-hour and time-zone changes, and receiver cleanup on stop and detach. It restores the time format after testing.
 
 Physical-device behavior and Android 8–13/15+ still need testing. Lint may report non-blocking notices about newer SDK/Gradle versions and backup configuration. Earlier screenshots in `docs/` show previous versions.

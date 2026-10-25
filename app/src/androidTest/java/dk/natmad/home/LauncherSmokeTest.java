@@ -92,10 +92,11 @@ public class LauncherSmokeTest extends Instrumentation {
                 }
                 find(root, "Back").performClick();
             });
+            AlarmSmokeChecks.run(this, activity);
             FrictionSmokeChecks.run(this, activity);
             MediaSmokeChecks.run(this, activity);
             DisplayModeSmokeChecks.run(this, activity);
-            result.putString("stream", "Launcher home, search, friction, media, and display mode smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
+            result.putString("stream", "Launcher home, search, alarms, friction, media, and display mode smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
             finish(Activity.RESULT_OK, result);
         } catch (Throwable error) {
             result.putString("stream", "FAILED: " + error + "\n");
@@ -106,7 +107,7 @@ public class LauncherSmokeTest extends Instrumentation {
     private static List<String> appLabels(View root) {
         List<String> labels = new ArrayList<>();
         visit(root, view -> {
-            if (view instanceof TextView && ((TextView) view).getCompoundDrawablesRelative()[0] != null)
+            if (view instanceof TextView && ((TextView) view).getCompoundDrawablesRelative()[0] instanceof AppIdenticon)
                 labels.add(((TextView) view).getText().toString());
         });
         return labels;

@@ -193,17 +193,22 @@ public class MainActivity extends Activity {
         displayParams.setMarginStart(dp(12));
         header.addView(new DisplayModeControl(this), displayParams);
         root.addView(header);
+        LinearLayout dateRow = new LinearLayout(this);
+        dateRow.setGravity(Gravity.CENTER_VERTICAL);
+        dateRow.setPadding(0, 0, 0, dp(8));
         TextClock date = new TextClock(this);
         date.setFormat12Hour("EEEE, d MMMM");
         date.setFormat24Hour("EEEE, d MMMM");
         date.setTextColor(MUTED);
         date.setTextSize(15);
-        date.setPadding(0, dp(6), 0, dp(4));
-        root.addView(date);
+        date.setSingleLine(true);
+        date.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        dateRow.addView(date, new LinearLayout.LayoutParams(0, -2, 1));
         alarmControl = new AlarmControl(this);
         LinearLayout.LayoutParams alarmParams = new LinearLayout.LayoutParams(-2, -2);
-        alarmParams.bottomMargin = dp(8);
-        root.addView(alarmControl, alarmParams);
+        alarmParams.setMarginStart(dp(8));
+        dateRow.addView(alarmControl, alarmParams);
+        root.addView(dateRow, new LinearLayout.LayoutParams(-1, -2));
         if (resumed) alarmControl.start();
 
         LinearLayout favorites = scrollArea();

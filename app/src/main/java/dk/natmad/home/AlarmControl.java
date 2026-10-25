@@ -43,6 +43,7 @@ final class AlarmControl extends Button {
         setMinimumHeight(dp(48));
         setMinWidth(dp(48));
         setMinimumWidth(dp(48));
+        setMaxWidth(dp(160));
         setPadding(0, dp(8), 0, dp(8));
         android.graphics.drawable.Drawable icon = context.getDrawable(R.drawable.ic_alarm);
         icon.setBounds(0, 0, dp(16), dp(16));
@@ -115,6 +116,17 @@ final class AlarmControl extends Button {
                 return;
             } catch (PendingIntent.CanceledException | SecurityException unavailable) {
                 // The alarm or its app may have been removed since the last refresh.
+            }
+        }
+        // Some vendor clocks omit SHOW_ALARMS or protect it with a permission.
+        // Discover their alarm capability, then open their normal launcher entry.
+        // Do not send SET_ALARM: tapping this shortcut must never create an alarm.
+        for (Intent launch : AlarmApps.launchIntents(getContext().getPackageManager())) {
+            try {
+                getContext().startActivity(launch);
+                return;
+            } catch (ActivityNotFoundException | SecurityException unavailable) {
+                // An app can disappear or be disabled after discovery; try the next.
             }
         }
         refresh();

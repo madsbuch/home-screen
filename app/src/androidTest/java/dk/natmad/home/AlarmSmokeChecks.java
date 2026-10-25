@@ -27,6 +27,13 @@ final class AlarmSmokeChecks {
                 "Alarm action and state must be accessible");
             require(home.getMinHeight() >= Math.round(48 * activity.getResources().getDisplayMetrics().density),
                 "Alarm row needs a 48dp tap target");
+            require(home.getParent() instanceof android.widget.LinearLayout, "Alarm needs a date row");
+            android.widget.LinearLayout dateRow = (android.widget.LinearLayout) home.getParent();
+            require(dateRow.getOrientation() == android.widget.LinearLayout.HORIZONTAL
+                    && dateRow.getChildCount() == 2
+                    && dateRow.getChildAt(0) instanceof android.widget.TextClock
+                    && dateRow.getChildAt(1) == home,
+                "The alarm shortcut must sit on the same row as the date");
             AlarmManager.AlarmClockInfo actual = activity.getSystemService(AlarmManager.class).getNextAlarmClock();
             require(home.getContentDescription().toString().startsWith(actual == null
                     ? "Open alarms. No alarm set." : "Open alarms. Next alarm:"),
@@ -48,6 +55,17 @@ final class AlarmSmokeChecks {
                 control.performClick();
                 require(AlarmClock.ACTION_SHOW_ALARMS.equals(context.opened.getAction()),
                     "Alarm access must work even with no scheduled alarm");
+                require(!AlarmApps.launchIntents(activity.getPackageManager()).isEmpty(),
+                    "Install a launchable alarm app to test vendor-clock fallbacks");
+                for (int failure : new int[] {1, 2}) {
+                    context.rejectShowAlarms = failure;
+                    context.opened = null;
+                    control.performClick();
+                    require(context.opened != null && Intent.ACTION_MAIN.equals(context.opened.getAction())
+                            && context.opened.getComponent() != null,
+                        "Missing or protected SHOW_ALARMS must fall back to a real alarm app's launch activity");
+                }
+                context.rejectShowAlarms = 0;
 
                 Calendar trigger = Calendar.getInstance();
                 trigger.set(2030, Calendar.JANUARY, 2, 17, 5, 0);
@@ -93,6 +111,7 @@ final class AlarmSmokeChecks {
         int registrations;
         int removals;
         boolean unavailable;
+        int rejectShowAlarms;
 
         Fixture(Context context) { super(context); }
         @Override public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter) {
@@ -114,6 +133,11 @@ final class AlarmSmokeChecks {
         }
         @Override public void startActivity(Intent intent) {
             if (unavailable) throw new ActivityNotFoundException();
+            require(!AlarmClock.ACTION_SET_ALARM.equals(intent.getAction()), "Opening alarms must not create one");
+            if (AlarmClock.ACTION_SHOW_ALARMS.equals(intent.getAction())) {
+                if (rejectShowAlarms == 1) throw new ActivityNotFoundException();
+                if (rejectShowAlarms == 2) throw new SecurityException("Vendor-protected alarms action");
+            }
             opened = intent;
         }
         void change(String action) {

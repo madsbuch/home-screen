@@ -9,7 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Finds alarm apps by supported actions, without relying on vendor names or labels. */
+/** Finds alarm apps by supported actions, with a OnePlus Clock compatibility fallback. */
 final class AlarmApps {
     private AlarmApps() {}
 
@@ -25,6 +25,9 @@ final class AlarmApps {
                 if (info.activityInfo != null) packages.add(info.activityInfo.packageName);
             }
         }
+        // OnePlus fallback also works when its clock advertises neither standard action.
+        // Package ID: https://play.google.com/store/apps/details?id=com.oneplus.deskclock
+        packages.add("com.oneplus.deskclock");
         List<Intent> launches = new ArrayList<>();
         for (String packageName : packages) {
             Intent launch = manager.getLaunchIntentForPackage(packageName);

@@ -55,6 +55,8 @@ The indicator uses Android's [next alarm clock](https://developer.android.com/re
 
 Opening first uses Android's [Show alarms action](https://developer.android.com/reference/android/provider/AlarmClock#ACTION_SHOW_ALARMS), then the next alarm's own shortcut. If those are unavailable, Quiet Home discovers apps that support showing or setting alarms and opens their normal app entry point. This supports clocks that omit or restrict the Show alarms action, even when no alarm is scheduled. Discovery does not create an alarm or require an additional permission. If no usable entry point exists, Quiet Home displays a message.
 
+For OnePlus phones, the launcher also checks the official [OnePlus Clock package](https://play.google.com/store/apps/details?id=com.oneplus.deskclock) (`com.oneplus.deskclock`) as a final fallback, even if it advertises neither standard alarm action. Android resolves its current launch activity; missing or disabled apps are skipped. This fallback still needs verification on a physical OnePlus 15.
+
 ## Music controls
 
 Tap **Enable music controls** on home, then grant notification access to **Quiet Home music controls** in Android Settings. This is Android's permission for discovering other apps' [active media sessions](https://developer.android.com/reference/android/media/session/MediaSessionManager). Quiet Home does not read or store notification contents.

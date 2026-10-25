@@ -49,7 +49,7 @@ Implementation reference: [AOSP display adjustment](https://android.googlesource
 
 ## Alarms
 
-Tap the small, muted alarm icon on the same row as the date to open your alarms. When an alarm is scheduled, a compact day and time appears beside it (for example, **Mon 07:00**), following the phone's 12/24-hour setting. With no alarm set, only the icon remains. There is no box or extra visible label. The touch target stays at least 48dp, and screen readers announce the full next-alarm date and time or the empty state.
+Tap the small, muted alarm icon on the same row as the date to open your alarms. Both header icons use a 24dp drawing in a 48dp touch target and align in one column at the trailing edge. When an alarm is scheduled, a compact day and time appears to the left of the alarm icon (for example, **Mon 07:00**), following the phone's 12/24-hour setting. With no alarm set, only the icon remains in the same position. There is no box or extra visible label, and screen readers announce the full next-alarm date and time or the empty state.
 
 The indicator uses Android's [next alarm clock](https://developer.android.com/reference/android/app/AlarmManager#getNextAlarmClock()) for the current user. Alarm apps must publish their alarms through Android's alarm-clock API to appear here; ordinary timers, calendar reminders, and apps that do not publish an alarm clock are not included. No new permission or setup is required. The row updates while home is visible and refreshes on return, including after alarm, clock, or time-zone changes.
 

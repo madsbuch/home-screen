@@ -56,7 +56,7 @@ final class AlarmSmokeChecks {
                 control.start();
                 require(context.registrations == 1, "Repeated start must not leak receivers");
                 require(control.getText().length() == 0, "No alarm should show only the small icon");
-                require(control.getCompoundDrawablesRelative()[0] != null, "Alarm shortcut needs an icon");
+                require(control.getCompoundDrawablesRelative()[2] != null, "Alarm shortcut needs a trailing icon");
                 control.performClick();
                 require(AlarmClock.ACTION_SHOW_ALARMS.equals(context.opened.getAction()),
                     "Alarm access must work even with no scheduled alarm");

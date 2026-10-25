@@ -36,18 +36,21 @@ final class AlarmControl extends Button {
         setAllCaps(false);
         setTextSize(14);
         setTextColor(0xff999999);
+        setIncludeFontPadding(false);
         setSingleLine(true);
         setEllipsize(TextUtils.TruncateAt.END);
-        setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
         setMinHeight(dp(48));
         setMinimumHeight(dp(48));
         setMinWidth(dp(48));
         setMinimumWidth(dp(48));
         setMaxWidth(dp(160));
-        setPadding(0, dp(8), 0, dp(8));
+        // Match the display control's 24dp icon centered in its final 48dp.
+        // Keep the time on the leading side so the icon never moves between states.
+        setPaddingRelative(dp(12), dp(12), dp(12), dp(12));
         android.graphics.drawable.Drawable icon = context.getDrawable(R.drawable.ic_alarm);
-        icon.setBounds(0, 0, dp(16), dp(16));
-        setCompoundDrawablesRelative(icon, null, null, null);
+        icon.setBounds(0, 0, dp(24), dp(24));
+        setCompoundDrawablesRelative(null, null, icon, null);
         android.util.TypedValue background = new android.util.TypedValue();
         context.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, background, true);
         setBackgroundResource(background.resourceId);
@@ -95,7 +98,7 @@ final class AlarmControl extends Button {
             label = DateFormat.format("EEE", trigger) + " " + time;
             description = "Open alarms. Next alarm: " + DateFormat.format(pattern, trigger) + ", " + time;
         }
-        setCompoundDrawablePadding(alarm == null ? 0 : dp(6));
+        setCompoundDrawablePadding(alarm == null ? 0 : dp(8));
         setText(label);
         setContentDescription(description);
     }

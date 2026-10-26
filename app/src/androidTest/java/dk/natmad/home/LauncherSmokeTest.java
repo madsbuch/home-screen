@@ -120,10 +120,11 @@ public class LauncherSmokeTest extends Instrumentation {
         return result[0];
     }
 
-    private static TextView find(View root, String text) {
-        TextView[] result = {null};
+    private static View find(View root, String text) {
+        View[] result = {null};
         visit(root, view -> {
-            if (view instanceof TextView && ((TextView) view).getText().toString().equals(text)) result[0] = (TextView) view;
+            if (text.equals(view.getContentDescription())
+                    || view instanceof TextView && ((TextView) view).getText().toString().equals(text)) result[0] = view;
         });
         return result[0];
     }

@@ -16,7 +16,6 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.TextView;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.function.IntConsumer;
@@ -27,7 +26,10 @@ final class HomeSections extends LinearLayout {
     private static final int MUTED = 0xff999999;
     private final SmallGoals store;
     private final SectionPager pages;
-    private final TextView count;
+    private final MediaControls media;
+    private final Button add;
+    private final LinearLayout entry;
+    private boolean editorOpen;
     private final EditText input;
     private final Button submit;
     private final LinearLayout editActions;
@@ -48,12 +50,10 @@ final class HomeSections extends LinearLayout {
     HomeSections(Context context, int initialSection, Bundle state, MediaControls media, IntConsumer onSelection) {
         super(context);
         store = new SmallGoals(context);
+        this.media = media;
         preferredSection = initialSection;
         setOrientation(VERTICAL);
         setFocusableInTouchMode(true);
-        View divider = new View(context);
-        divider.setBackgroundColor(0xff333333);
-        addView(divider, new LayoutParams(-1, dp(1)));
         pages = new SectionPager(context, section -> {
             preferredSection = section;
             onSelection.accept(section);
@@ -67,16 +67,19 @@ final class HomeSections extends LinearLayout {
         goalsPage.setOrientation(VERTICAL);
         pages.addView(goalsPage);
 
-        LinearLayout heading = new LinearLayout(context);
-        heading.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = copy("Små Mål", 18, WHITE);
-        if (android.os.Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
-        heading.addView(title, new LayoutParams(0, dp(44), 1));
-        count = copy("", 13, MUTED);
-        heading.addView(count);
-        goalsPage.addView(heading);
-
-        LinearLayout entry = new LinearLayout(context);
+        goalScroll = new ScrollView(context);
+        rows = new LinearLayout(context);
+        rows.setOrientation(VERTICAL);
+        goalScroll.addView(rows);
+        goalsPage.addView(goalScroll, new LayoutParams(-1, 0, 1));
+        add = button("+ Add", this::openAdd);
+        add.setContentDescription("Add goal");
+        add.setTextSize(13);
+        add.setTextColor(MUTED);
+        LayoutParams addParams = new LayoutParams(dp(72), dp(48));
+        addParams.gravity = Gravity.END;
+        goalsPage.addView(add, addParams);
+        entry = new LinearLayout(context);
         entry.setGravity(Gravity.CENTER_VERTICAL);
         input = new EditText(context);
         input.setTextColor(WHITE);
@@ -92,21 +95,17 @@ final class HomeSections extends LinearLayout {
         entry.addView(input, new LayoutParams(0, -2, 1));
         submit = button("Add", this::saveGoal);
         entry.addView(submit, new LayoutParams(dp(64), dp(48)));
+        Button cancel = button("×", this::finishEdit);
+        cancel.setContentDescription("Cancel");
+        entry.addView(cancel, new LayoutParams(dp(48), dp(48)));
         goalsPage.addView(entry);
         editActions = new LinearLayout(context);
-        editActions.addView(button("Cancel", this::finishEdit), new LayoutParams(0, dp(48), 1));
         editActions.addView(button("Delete goal", () -> {
             if (editingId != null) store.delete(date, editingId);
             finishEdit();
             renderGoals();
         }), new LayoutParams(0, dp(48), 1));
         goalsPage.addView(editActions);
-        goalScroll = new ScrollView(context);
-        rows = new LinearLayout(context);
-        rows.setOrientation(VERTICAL);
-        goalScroll.addView(rows);
-        goalsPage.addView(goalScroll, new LayoutParams(-1, 0, 1));
-
         input.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
             public void onTextChanged(CharSequence text, int start, int before, int count) {
@@ -136,9 +135,6 @@ final class HomeSections extends LinearLayout {
         int scrollY = goalScroll.getScrollY();
         rows.removeAllViews();
         List<SmallGoals.Goal> goals = store.read(date);
-        long completed = goals.stream().filter(goal -> goal.done).count();
-        count.setText("Today · " + completed + "/" + goals.size());
-        if (goals.isEmpty()) rows.addView(copy("Go for a run. Go for a swim. Finish task A.", 14, MUTED));
         for (SmallGoals.Goal goal : goals) {
             LocalDate goalDate = date;
             LinearLayout row = new LinearLayout(getContext());
@@ -156,13 +152,11 @@ final class HomeSections extends LinearLayout {
                 renderGoals();
             });
             row.addView(check, new LayoutParams(0, -2, 1));
-            Button edit = button("Edit", () -> edit(goal));
-            edit.setTextSize(12);
-            edit.setContentDescription("Edit goal: " + goal.title);
-            row.addView(edit, new LayoutParams(dp(56), -2));
+            check.setOnLongClickListener(view -> { edit(goal); return true; });
             rows.addView(row);
         }
         goalScroll.post(() -> goalScroll.scrollTo(0, scrollY));
+        requestLayout();
     }
 
     private void saveGoal() {
@@ -171,6 +165,8 @@ final class HomeSections extends LinearLayout {
         if (editingId == null) {
             store.add(LocalDate.now(), title);
             input.setText("");
+            draftBeforeEdit = "";
+            finishEdit();
         } else {
             for (SmallGoals.Goal goal : store.read(date)) {
                 if (goal.id.equals(editingId)) store.update(date, editingId, title, goal.done);
@@ -182,11 +178,22 @@ final class HomeSections extends LinearLayout {
         goalScroll.post(() -> goalScroll.fullScroll(FOCUS_DOWN));
     }
 
+    private void openAdd() {
+        editorOpen = true;
+        updateEditor();
+        focusInput();
+    }
+
     private void edit(SmallGoals.Goal goal) {
         if (editingId == null) draftBeforeEdit = input.getText().toString();
         editingId = goal.id;
+        editorOpen = true;
         input.setText(goal.title);
         updateEditor();
+        focusInput();
+    }
+
+    private void focusInput() {
         input.setSelection(input.length());
         input.requestFocus();
         input.post(() -> {
@@ -196,14 +203,17 @@ final class HomeSections extends LinearLayout {
     }
 
     private void finishEdit() {
+        if (editingId != null) input.setText(draftBeforeEdit);
         editingId = null;
-        input.setText(draftBeforeEdit);
         draftBeforeEdit = "";
+        editorOpen = false;
         updateEditor();
         dismissKeyboard();
     }
 
     private void updateEditor() {
+        add.setVisibility(editorOpen ? GONE : VISIBLE);
+        entry.setVisibility(editorOpen ? VISIBLE : GONE);
         submit.setText(editingId == null ? "Add" : "Save");
         input.setHint(editingId == null ? "A small goal for today" : "Edit small goal");
         editActions.setVisibility(editingId == null ? GONE : VISIBLE);
@@ -217,6 +227,7 @@ final class HomeSections extends LinearLayout {
 
     Bundle saveEditorState() {
         Bundle state = new Bundle();
+        state.putBoolean("open", editorOpen);
         state.putString("text", input.getText().toString());
         state.putString("editing_id", editingId);
         state.putString("date", date.toString());
@@ -227,12 +238,14 @@ final class HomeSections extends LinearLayout {
     private void restoreEditorState(Bundle state) {
         String text = "";
         if (state != null) {
+            editorOpen = state.getBoolean("open", false);
             text = state.getString("text", "");
             String id = state.getString("editing_id");
             if (id != null) {
                 if (date.toString().equals(state.getString("date"))
                         && store.read(date).stream().anyMatch(goal -> goal.id.equals(id))) {
                     editingId = id;
+                    editorOpen = true;
                     draftBeforeEdit = state.getString("draft", "");
                 } else text = state.getString("draft", "");
             }
@@ -251,7 +264,22 @@ final class HomeSections extends LinearLayout {
     }
 
     @Override protected void onMeasure(int widthSpec, int heightSpec) {
-        int compactHeight = Math.min(dp(240), Math.round(getResources().getDisplayMetrics().heightPixels * 0.32f));
+        int width = MeasureSpec.getSize(widthSpec);
+        int exactWidth = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY);
+        int unbounded = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+        rows.measure(exactWidth, unbounded);
+        int listHeight = Math.min(dp(96), rows.getMeasuredHeight());
+        int controlsHeight = dp(48);
+        if (editorOpen) {
+            entry.measure(exactWidth, unbounded);
+            controlsHeight = entry.getMeasuredHeight();
+            if (editingId != null) controlsHeight += dp(48);
+        }
+        int compactHeight = listHeight + controlsHeight;
+        if (musicAvailable) {
+            media.measure(exactWidth, unbounded);
+            compactHeight = Math.max(compactHeight, media.getMeasuredHeight());
+        }
         super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(
             Math.min(compactHeight, MeasureSpec.getSize(heightSpec)), MeasureSpec.EXACTLY));
     }
@@ -271,16 +299,6 @@ final class HomeSections extends LinearLayout {
     @Override protected void onDetachedFromWindow() {
         removeCallbacks(dateCheck);
         super.onDetachedFromWindow();
-    }
-
-    private TextView copy(String text, int size, int color) {
-        TextView view = new TextView(getContext());
-        view.setText(text);
-        view.setTextSize(size);
-        view.setTextColor(color);
-        view.setGravity(Gravity.CENTER_VERTICAL);
-        view.setPadding(0, dp(6), 0, dp(6));
-        return view;
     }
 
     private Button button(String text, Runnable action) {

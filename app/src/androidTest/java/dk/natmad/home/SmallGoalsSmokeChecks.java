@@ -35,12 +35,16 @@ final class SmallGoalsSmokeChecks {
                 require(find(root, "Music") == null, "No music must leave only small goals");
                 require(find(root, "Yesterday fixture") == null, "Yesterday's goals leaked into today");
                 require(!(find(root, "Små Mål") instanceof android.widget.Button), "Section tabs must be removed");
+                require(find(root, "Small goal") == null, "New-goal input must be hidden until Add is tapped");
+                require(!hasExtraLabels(root), "Goals must not show a header, counter, or sample text");
+                find(root, "Add goal").performClick();
                 EditText input = (EditText) find(root, "Small goal");
-                require(input != null, "Goal entry must be inside the bottom section");
+                require(input != null, "Add must reveal the inline editor");
                 input.setText("  ");
                 require(!find(root, "Add").isEnabled(), "Blank goals must not be submitted");
                 input.setText("  Go for a run — smoke test  ");
                 input.onEditorAction(EditorInfo.IME_ACTION_DONE);
+                require(find(root, "Small goal") == null, "Saving must collapse the editor");
                 CheckBox goal = (CheckBox) find(root, "Go for a run — smoke test");
                 require(goal != null && !goal.isChecked(), "New goal missing or already completed");
                 goal.performClick();
@@ -54,17 +58,18 @@ final class SmallGoalsSmokeChecks {
                 goal.performClick();
                 require(!new SmallGoals(activity).read(LocalDate.now()).stream()
                     .filter(item -> item.id.equals(saved.id)).findFirst().get().done, "Unchecking did not persist");
+                find(root, "Add goal").performClick();
                 input = (EditText) find(root, "Small goal");
                 input.setText("Unfinished draft");
                 activity.onBackPressed();
                 input = (EditText) find(root, "Small goal");
                 require(input.getText().toString().equals("Unfinished draft"), "Rebuilding home lost draft");
-                find(root, "Edit goal: Go for a run — smoke test").performClick();
+                find(root, "Go for a run — smoke test").performLongClick();
                 input.setText("Cancelled edit");
                 find(root, "Cancel").performClick();
                 require(input.getText().toString().equals("Unfinished draft"), "Cancel must restore new-goal draft");
                 require(find(root, "Go for a run — smoke test") != null, "Cancel changed saved goal");
-                find(root, "Edit goal: Go for a run — smoke test").performClick();
+                find(root, "Go for a run — smoke test").performLongClick();
                 input.setText("Go for a swim — smoke test");
                 activity.onBackPressed();
                 input = (EditText) find(root, "Small goal");
@@ -73,7 +78,7 @@ final class SmallGoalsSmokeChecks {
                 find(root, "Save").performClick();
                 require(find(root, "Go for a swim — smoke test") != null, "Editing did not update goal");
                 require(input.getText().toString().equals("Unfinished draft"), "Save must restore the draft");
-                find(root, "Edit goal: Go for a swim — smoke test").performClick();
+                find(root, "Go for a swim — smoke test").performLongClick();
                 find(root, "Delete goal").performClick();
                 input.setText("");
             });
@@ -97,8 +102,10 @@ final class SmallGoalsSmokeChecks {
         test.runOnMainSync(() -> {
             ViewGroup root = activity.findViewById(android.R.id.content);
             swipe(root, false);
-            require(find(root, "Add") != null && find(root, "Music") == null,
+            require(find(root, "Add goal") != null && find(root, "Music") == null,
                 "Swiping without music must stay on goals");
+            require(sections(root).getHeight() <= Math.round(56 * activity.getResources().getDisplayMetrics().density),
+                "Empty goals section must collapse to a single compact row");
         });
     }
 
@@ -107,7 +114,7 @@ final class SmallGoalsSmokeChecks {
         // Cross a child view, exercising interception instead of directly selecting a tab.
         float start = section.getWidth() * (left ? 0.85f : 0.15f);
         float end = section.getWidth() - start;
-        float y = section.getHeight() * 0.7f;
+        float y = section.getHeight() * 0.25f;
         long down = SystemClock.uptimeMillis();
         for (int i = 0; i <= 8; i++) {
             MotionEvent event = MotionEvent.obtain(down, down + i * 30,
@@ -140,6 +147,20 @@ final class SmallGoalsSmokeChecks {
             }
         }
         return null;
+    }
+
+    private static boolean hasExtraLabels(View view) {
+        if (view.getVisibility() != View.VISIBLE) return false;
+        if (view instanceof TextView) {
+            String text = ((TextView) view).getText().toString();
+            if (text.equals("Små Mål") || text.startsWith("Today ·") || text.contains("Finish task A")) return true;
+        }
+        if (view instanceof ViewGroup) {
+            for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) {
+                if (hasExtraLabels(((ViewGroup) view).getChildAt(i))) return true;
+            }
+        }
+        return false;
     }
 
     private static void require(boolean condition, String message) {

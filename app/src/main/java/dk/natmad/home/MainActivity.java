@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.WindowInsets;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextClock;
@@ -230,14 +231,24 @@ public class MainActivity extends Activity {
         }
         if (home.isEmpty()) {
             favorites.addView(copy("Your home, with a little less.", 23, WHITE));
-            favorites.addView(copy("Your other apps are in Everything else.", 16, MUTED));
+            favorites.addView(copy("Open the app-grid icon below for your other apps.", 16, MUTED));
         }
         mediaControls = new MediaControls(this);
         homeSections = new HomeSections(this, homeSection, homeEditorState, mediaControls,
             section -> homeSection = section);
         root.addView(homeSections, new LinearLayout.LayoutParams(-1, -2));
         if (resumed) mediaControls.start();
-        root.addView(action("Everything else", 17, WHITE, () -> showList(true)));
+        ImageButton drawer = new ImageButton(this);
+        drawer.setImageResource(R.drawable.ic_apps);
+        drawer.setPadding(dp(12), dp(12), dp(12), dp(12));
+        drawer.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
+        drawer.setContentDescription("Everything else");
+        drawer.setTooltipText("Everything else");
+        android.util.TypedValue background = new android.util.TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, background, true);
+        drawer.setBackgroundResource(background.resourceId);
+        drawer.setOnClickListener(view -> showList(true));
+        root.addView(drawer, new LinearLayout.LayoutParams(dp(48), dp(48)));
     }
 
     private void showList(boolean focusSearch) {

@@ -61,7 +61,7 @@ final class MediaSmokeChecks {
             test.runOnMainSync(() -> visible(root, "Stop playback").performClick());
             await(test, () -> stopped[0] == 1 && visible(root, "Stop playback") == null,
                 "Stop must reach the paused player and remove the stopped session from home");
-            test.runOnMainSync(() -> require(visible(root, "Music") == null && visible(root, "Add") != null,
+            test.runOnMainSync(() -> require(visible(root, "Music") == null && visible(root, "Add goal") != null,
                 "Stopped music must leave only goals in the bottom area"));
             test.runOnMainSync(() -> state(session[0], PlaybackState.STATE_PLAYING, ACTIONS));
             await(test, () -> visible(root, "Pause") != null, "New playback must restore the controls");

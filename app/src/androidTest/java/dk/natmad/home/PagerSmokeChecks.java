@@ -42,7 +42,8 @@ final class PagerSmokeChecks {
         await(test, () -> pager.getScrollX() == pager.getWidth() && pager.getChildAt(0).getVisibility() == View.INVISIBLE,
             "Short fast fling must advance to goals");
         test.runOnMainSync(() -> {
-            require(SmallGoalsSmokeChecks.find(root, "Add") != null, "Goals page needs inline input");
+            require(SmallGoalsSmokeChecks.find(root, "Small goal") == null, "Input must not be permanent");
+            SmallGoalsSmokeChecks.find(root, "Add goal").performClick();
             EditText input = (EditText) SmallGoalsSmokeChecks.find(root, "Small goal");
             input.setText("Keep this draft across swipes");
             require(pager.performAccessibilityAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD, null),
@@ -57,6 +58,7 @@ final class PagerSmokeChecks {
             EditText input = (EditText) SmallGoalsSmokeChecks.find(root, "Small goal");
             require(input.getText().toString().equals("Keep this draft across swipes"), "Swipe discarded draft");
             input.setText("");
+            SmallGoalsSmokeChecks.find(root, "Cancel").performClick();
             SmallGoalsSmokeChecks.swipe(root, false);
         });
         await(test, () -> pager.getScrollX() == 0 && pager.getChildAt(1).getVisibility() == View.INVISIBLE,

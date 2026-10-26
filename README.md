@@ -1,6 +1,6 @@
 # Quiet Home
 
-A native Android launcher: black background, a clock, and app names with small generated monochrome marks. Home includes **Everything else** and a phone-wide monochrome/color toggle. No feed, branded app icons, badges, ads, analytics, or network permission.
+A native Android launcher: black background, a clock, and app names with small generated monochrome marks. Home includes a small app-grid icon for **Everything else** and a phone-wide monochrome/color toggle. No feed, branded app icons, badges, ads, analytics, or network permission.
 
 ## Configure home in code
 
@@ -59,7 +59,7 @@ For OnePlus phones, the launcher also checks the official [OnePlus Clock package
 
 ## Music controls
 
-Open **Everything else → Music controls setup**, then grant notification access to **Quiet Home music controls** in Android Settings. This is Android's permission for discovering other apps' [active media sessions](https://developer.android.com/reference/android/media/session/MediaSessionManager). Quiet Home does not read or store notification contents.
+Open **app-grid icon → Music controls setup**, then grant notification access to **Quiet Home music controls** in Android Settings. This is Android's permission for discovering other apps' [active media sessions](https://developer.android.com/reference/android/media/session/MediaSessionManager). Quiet Home does not read or store notification contents.
 
 While a player publishes a playing or paused media session, the bottom section above Everything else can be swiped horizontally between **Music** and **Små Mål**. The boxes scroll horizontally with your finger and settle onto a fixed position when you release; a quick flick advances to the next box. There are no tabs. Screen readers can use the scroll-forward/backward actions, and keyboard users can use left/right arrows. Music shows the track, artist, and round Previous / Play or Pause / Next / Stop icon controls. Without a playing or paused session, the bottom section shows only **Små Mål**, with no empty music page. Play/pause is highlighted in white; the other controls have a fine outline. Each icon has an accessibility label and a long-press tooltip. Paused playback remains available to resume; stopped or ended sessions disappear. Unsupported controls are disabled. If several players have sessions, playing media takes priority over paused media. Track details update without rebuilding the home screen. Players must expose Android media sessions; this can include podcasts and video as well as music.
 
@@ -69,7 +69,7 @@ Notification access is optional and can be revoked in Android Settings. Without 
 
 ## Små Mål
 
-The bottom section holds small goals for today, such as “Go for a run”, “Go for a swim”, or “Finish task A”. Type in the field directly inside the section and tap **Add** or the keyboard’s Done key. Check a goal off when done, uncheck it to reopen it, or use **Edit** to rename or delete it in the same inline field. Save, Cancel, and Delete stay in the section; no dialog opens. Cancelling an edit restores any new-goal draft you were writing. Drafts and in-progress edits survive swiping, returning home, and activity recreation. The count shows completed goals out of today's total. Completed goals remain visible and checked off until the local calendar day changes.
+The bottom section shows just the goals and **+ Add**, without a header, counter, or placeholder text. It fits its contents, showing up to two standard-height goal rows before scrolling; an empty list takes only one button-height row. It holds small goals for today, such as “Go for a run”, “Go for a swim”, or “Finish task A”. Tap the discreet **+ Add** button to reveal an inline field, then save with **Add** or the keyboard’s Done key. Saving or cancelling hides the field again. Check a goal off when done, uncheck it to reopen it, or long-press a goal to rename or delete it in the same inline field. Save, Cancel, and Delete stay in the section; no dialog opens. Cancelling an edit restores any new-goal draft you were writing. Drafts and in-progress edits survive swiping, returning home, and activity recreation. The count shows completed goals out of today's total. Completed goals remain visible and checked off until the local calendar day changes.
 
 Goals and completion are saved locally across restarts. Each local calendar day has its own list; unfinished goals do not automatically carry forward. Earlier days remain stored locally but are not shown in today's section. The date refreshes while home is visible and on return. There is no account, sync, notification, or extra permission.
 
@@ -112,7 +112,7 @@ The script creates an app-specific signing key in the ignored `.signing/` direct
 ## How it works
 
 - **Home:** the code-defined app list. Apps open immediately unless assigned opening friction. The clock follows the phone's 12/24-hour setting.
-- **Everything else:** an alphabetical list of all launchable installed apps, including those on home. Chrome and Maps remain available here. Tap an app to open it.
+- **Everything else:** tap the muted app-grid icon at the bottom of home to open an alphabetical list of all launchable installed apps, including those on home. Chrome and Maps remain available here. Tap an app to open it.
 - **Search apps:** filters that list as you type, matching any part of a name regardless of capitalization. Clear restores the full list; returning home resets the query. Opening the list focuses search and requests the keyboard.
 
 Each app has a muted 24dp identicon on an 8×8 grid. SHA-256 of the Android package identifier supplies four bits per row, mirrored horizontally into eight columns. The mark stays the same across restarts, label/language changes, and launcher activity changes. Apps from the same package share a mark. These are visual cues, not guaranteed unique identifiers; the app name remains visible. Drawing uses native Android Canvas with no image assets or downloads.

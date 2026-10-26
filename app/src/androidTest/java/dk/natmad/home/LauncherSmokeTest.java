@@ -116,7 +116,7 @@ public class LauncherSmokeTest extends Instrumentation {
 
     private static EditText findSearch(View root) {
         EditText[] result = {null};
-        visit(root, view -> { if (view instanceof EditText) result[0] = (EditText) view; });
+        visit(root, view -> { if (view instanceof EditText && "Search apps".contentEquals(view.getContentDescription())) result[0] = (EditText) view; });
         return result[0];
     }
 

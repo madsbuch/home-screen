@@ -43,6 +43,8 @@ public class MainActivity extends Activity {
     private AlarmControl alarmControl;
     private boolean resumed;
     private int homeSection;
+    private HomeSections homeSections;
+    private Bundle homeEditorState;
 
     private static class App {
         final String id;
@@ -55,7 +57,10 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        if (state != null) homeSection = state.getInt("home_section", 0);
+        if (state != null) {
+            homeSection = state.getInt("home_section", 0);
+            homeEditorState = state.getBundle("home_editor");
+        }
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                 android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::showHome);
@@ -84,6 +89,7 @@ public class MainActivity extends Activity {
         state.putBoolean("drawer", screen.equals("everyday"));
         state.putString("query", searchQuery);
         state.putInt("home_section", homeSection);
+        state.putBundle("home_editor", homeSections == null ? homeEditorState : homeSections.saveEditorState());
         super.onSaveInstanceState(state);
     }
 
@@ -148,6 +154,8 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout page(String name) {
+        if (homeSections != null) homeEditorState = homeSections.saveEditorState();
+        homeSections = null;
         if (mediaControls != null) mediaControls.stop();
         mediaControls = null;
         if (alarmControl != null) alarmControl.stop();
@@ -225,8 +233,9 @@ public class MainActivity extends Activity {
             favorites.addView(copy("Your other apps are in Everything else.", 16, MUTED));
         }
         mediaControls = new MediaControls(this);
-        root.addView(new HomeSections(this, homeSection, mediaControls,
-            section -> homeSection = section), new LinearLayout.LayoutParams(-1, -2));
+        homeSections = new HomeSections(this, homeSection, homeEditorState, mediaControls,
+            section -> homeSection = section);
+        root.addView(homeSections, new LinearLayout.LayoutParams(-1, -2));
         if (resumed) mediaControls.start();
         root.addView(action("Everything else", 17, WHITE, () -> showList(true)));
     }

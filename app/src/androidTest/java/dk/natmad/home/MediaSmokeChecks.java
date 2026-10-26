@@ -46,14 +46,7 @@ final class MediaSmokeChecks {
                 "Playing session missing; enable notification access for Quiet Home on the test emulator");
             await(test, () -> visible(root, "Test artist") != null, "Artist missing");
             capture(test, "music-playing.png");
-            test.runOnMainSync(() -> {
-                SmallGoalsSmokeChecks.swipe(root, true);
-                require(visible(root, "+ Add goal") != null && visible(root, "Pause") == null,
-                    "Swipe left must show goals in the music area");
-            });
-            test.waitForIdleSync();
-            test.runOnMainSync(() -> SmallGoalsSmokeChecks.swipe(root, false));
-            await(test, () -> visible(root, "Pause") != null, "Swipe right must restore music controls");
+            PagerSmokeChecks.run(test, root);
             test.runOnMainSync(() -> visible(root, "Pause").performClick());
             await(test, () -> visible(root, "Play") != null, "Pause must leave a resume control");
             capture(test, "music-paused.png");
@@ -68,7 +61,7 @@ final class MediaSmokeChecks {
             test.runOnMainSync(() -> visible(root, "Stop playback").performClick());
             await(test, () -> stopped[0] == 1 && visible(root, "Stop playback") == null,
                 "Stop must reach the paused player and remove the stopped session from home");
-            test.runOnMainSync(() -> require(visible(root, "Music") == null && visible(root, "+ Add goal") != null,
+            test.runOnMainSync(() -> require(visible(root, "Music") == null && visible(root, "Add") != null,
                 "Stopped music must leave only goals in the bottom area"));
             test.runOnMainSync(() -> state(session[0], PlaybackState.STATE_PLAYING, ACTIONS));
             await(test, () -> visible(root, "Pause") != null, "New playback must restore the controls");

@@ -1,7 +1,6 @@
 package dk.natmad.home;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Instrumentation;
 import android.os.SystemClock;
 import android.view.MotionEvent;
@@ -9,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.view.inputmethod.EditorInfo;
 import android.widget.TextView;
 import java.time.LocalDate;
 
@@ -34,14 +34,13 @@ final class SmallGoalsSmokeChecks {
                 require(find(root, "Små Mål") != null, "Goals section missing");
                 require(find(root, "Music") == null, "No music must leave only small goals");
                 require(find(root, "Yesterday fixture") == null, "Yesterday's goals leaked into today");
-                find(root, "+ Add goal").performClick();
-                HomeSections sections = sections(root);
-                AlertDialog dialog = editor(sections);
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-                require(dialog.isShowing(), "Blank goal must keep editor open");
-                EditText input = (EditText) find(dialog.getWindow().getDecorView(), "Small goal");
+                require(!(find(root, "Små Mål") instanceof android.widget.Button), "Section tabs must be removed");
+                EditText input = (EditText) find(root, "Small goal");
+                require(input != null, "Goal entry must be inside the bottom section");
+                input.setText("  ");
+                require(!find(root, "Add").isEnabled(), "Blank goals must not be submitted");
                 input.setText("  Go for a run — smoke test  ");
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+                input.onEditorAction(EditorInfo.IME_ACTION_DONE);
                 CheckBox goal = (CheckBox) find(root, "Go for a run — smoke test");
                 require(goal != null && !goal.isChecked(), "New goal missing or already completed");
                 goal.performClick();
@@ -55,14 +54,28 @@ final class SmallGoalsSmokeChecks {
                 goal.performClick();
                 require(!new SmallGoals(activity).read(LocalDate.now()).stream()
                     .filter(item -> item.id.equals(saved.id)).findFirst().get().done, "Unchecking did not persist");
+                input = (EditText) find(root, "Small goal");
+                input.setText("Unfinished draft");
+                activity.onBackPressed();
+                input = (EditText) find(root, "Small goal");
+                require(input.getText().toString().equals("Unfinished draft"), "Rebuilding home lost draft");
                 find(root, "Edit goal: Go for a run — smoke test").performClick();
-                dialog = editor(sections(root));
-                input = (EditText) find(dialog.getWindow().getDecorView(), "Small goal");
+                input.setText("Cancelled edit");
+                find(root, "Cancel").performClick();
+                require(input.getText().toString().equals("Unfinished draft"), "Cancel must restore new-goal draft");
+                require(find(root, "Go for a run — smoke test") != null, "Cancel changed saved goal");
+                find(root, "Edit goal: Go for a run — smoke test").performClick();
                 input.setText("Go for a swim — smoke test");
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+                activity.onBackPressed();
+                input = (EditText) find(root, "Small goal");
+                require(input.getText().toString().equals("Go for a swim — smoke test")
+                    && find(root, "Save") != null, "Rebuilding home lost inline edit");
+                find(root, "Save").performClick();
                 require(find(root, "Go for a swim — smoke test") != null, "Editing did not update goal");
+                require(input.getText().toString().equals("Unfinished draft"), "Save must restore the draft");
                 find(root, "Edit goal: Go for a swim — smoke test").performClick();
-                editor(sections(root)).getButton(AlertDialog.BUTTON_NEUTRAL).performClick();
+                find(root, "Delete goal").performClick();
+                input.setText("");
             });
             test.waitForIdleSync();
             test.runOnMainSync(() -> {
@@ -84,7 +97,7 @@ final class SmallGoalsSmokeChecks {
         test.runOnMainSync(() -> {
             ViewGroup root = activity.findViewById(android.R.id.content);
             swipe(root, false);
-            require(find(root, "+ Add goal") != null && find(root, "Music") == null,
+            require(find(root, "Add") != null && find(root, "Music") == null,
                 "Swiping without music must stay on goals");
         });
     }
@@ -127,14 +140,6 @@ final class SmallGoalsSmokeChecks {
             }
         }
         return null;
-    }
-
-    private static AlertDialog editor(HomeSections sections) {
-        try {
-            java.lang.reflect.Field field = HomeSections.class.getDeclaredField("editor");
-            field.setAccessible(true);
-            return (AlertDialog) field.get(sections);
-        } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
     }
 
     private static void require(boolean condition, String message) {

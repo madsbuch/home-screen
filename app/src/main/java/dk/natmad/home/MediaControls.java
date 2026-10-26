@@ -43,6 +43,12 @@ final class MediaControls extends LinearLayout {
     private MediaController selected;
     private boolean started;
     private boolean listening;
+    private java.util.function.Consumer<Boolean> availabilityListener = available -> {};
+
+    void setAvailabilityListener(java.util.function.Consumer<Boolean> listener) {
+        availabilityListener = listener;
+        listener.accept(selected != null);
+    }
     private final Runnable accessChanged = this::refreshAccess;
     private final MediaSessionManager.OnActiveSessionsChangedListener sessionsChanged = this::replaceSessions;
     private final MediaController.Callback callback = new MediaController.Callback() {
@@ -71,11 +77,6 @@ final class MediaControls extends LinearLayout {
         player = new LinearLayout(context);
         player.setOrientation(VERTICAL);
         player.setPadding(0, dp(8), 0, dp(8));
-        View divider = new View(context);
-        divider.setBackgroundColor(0xff333333);
-        LayoutParams dividerLayout = new LayoutParams(-1, dp(1));
-        dividerLayout.bottomMargin = dp(16);
-        player.addView(divider, dividerLayout);
         title = text(18);
         artist = text(14);
         artist.setPadding(0, dp(4), 0, 0);
@@ -136,6 +137,7 @@ final class MediaControls extends LinearLayout {
             player.setVisibility(GONE);
             setup.setVisibility(VISIBLE);
             setVisibility(VISIBLE);
+            availabilityListener.accept(false);
         }
     }
 
@@ -172,6 +174,7 @@ final class MediaControls extends LinearLayout {
         setup.setVisibility(GONE);
         player.setVisibility(selected == null ? GONE : VISIBLE);
         setVisibility(selected == null ? GONE : VISIBLE);
+        availabilityListener.accept(selected != null);
         if (selected == null) return;
         MediaMetadata metadata = selected.getMetadata();
         CharSequence track = metadata == null ? null : metadata.getText(MediaMetadata.METADATA_KEY_DISPLAY_TITLE);
@@ -234,7 +237,7 @@ final class MediaControls extends LinearLayout {
         }
     }
 
-    private void requestAccess() {
+    void requestAccess() {
         new AlertDialog.Builder(getContext())
             .setTitle("Music on your home screen")
             .setMessage("Allow notification access for Quiet Home in Android Settings to show and control "

@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
     private MediaControls mediaControls;
     private AlarmControl alarmControl;
     private boolean resumed;
+    private int homeSection;
 
     private static class App {
         final String id;
@@ -54,6 +55,7 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        if (state != null) homeSection = state.getInt("home_section", 0);
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                 android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::showHome);
@@ -81,6 +83,7 @@ public class MainActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putBoolean("drawer", screen.equals("everyday"));
         state.putString("query", searchQuery);
+        state.putInt("home_section", homeSection);
         super.onSaveInstanceState(state);
     }
 
@@ -222,7 +225,8 @@ public class MainActivity extends Activity {
             favorites.addView(copy("Your other apps are in Everything else.", 16, MUTED));
         }
         mediaControls = new MediaControls(this);
-        root.addView(mediaControls, new LinearLayout.LayoutParams(-1, -2));
+        root.addView(new HomeSections(this, homeSection, mediaControls,
+            section -> homeSection = section), new LinearLayout.LayoutParams(-1, -2));
         if (resumed) mediaControls.start();
         root.addView(action("Everything else", 17, WHITE, () -> showList(true)));
     }
@@ -231,6 +235,8 @@ public class MainActivity extends Activity {
         page("everyday");
         root.addView(action("Back", 16, MUTED, this::showHome));
         root.addView(copy("Everything else", 30, WHITE));
+        root.addView(action("Music controls setup", 14, MUTED,
+            () -> new MediaControls(this).requestAccess()));
 
         LinearLayout searchRow = new LinearLayout(this);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);

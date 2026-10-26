@@ -10,7 +10,7 @@ Edit `HomeApps.PACKAGES` in `app/src/main/java/dk/natmad/home/HomeApps.java`, re
 | --- | --- |
 | Phone | `com.google.android.dialer`, then `com.android.dialer` |
 | [Rejsekort](https://play.google.com/store/apps/details?id=dk.rejsekort.digitalrejsekort) | `dk.rejsekort.digitalrejsekort` |
-| Garmin Connect | `com.garmin.android.apps.connectmobile` |
+| Obsidian | `md.obsidian` |
 | Tally | `com.madsbuch.tally` |
 | Varg | `com.varg.workout` |
 
@@ -59,13 +59,21 @@ For OnePlus phones, the launcher also checks the official [OnePlus Clock package
 
 ## Music controls
 
-Tap **Enable music controls** on home, then grant notification access to **Quiet Home music controls** in Android Settings. This is Android's permission for discovering other apps' [active media sessions](https://developer.android.com/reference/android/media/session/MediaSessionManager). Quiet Home does not read or store notification contents.
+Open **Everything else → Music controls setup**, then grant notification access to **Quiet Home music controls** in Android Settings. This is Android's permission for discovering other apps' [active media sessions](https://developer.android.com/reference/android/media/session/MediaSessionManager). Quiet Home does not read or store notification contents.
 
-While a player publishes a playing or paused media session, home shows the track, artist, and round Previous / Play or Pause / Next / Stop icon controls above Everything else. Play/pause is highlighted in white; the other controls have a fine outline. Each icon has an accessibility label and a long-press tooltip. Paused playback remains available to resume; stopped or ended sessions disappear. Unsupported controls are disabled. If several players have sessions, playing media takes priority over paused media. Track details update without rebuilding the home screen. Players must expose Android media sessions; this can include podcasts and video as well as music.
+While a player publishes a playing or paused media session, the bottom section above Everything else can be swiped horizontally between **Music** and **Små Mål**. The section names also work as buttons. Music shows the track, artist, and round Previous / Play or Pause / Next / Stop icon controls. Without a playing or paused session, the bottom section shows only **Små Mål**, with no empty music page. Play/pause is highlighted in white; the other controls have a fine outline. Each icon has an accessibility label and a long-press tooltip. Paused playback remains available to resume; stopped or ended sessions disappear. Unsupported controls are disabled. If several players have sessions, playing media takes priority over paused media. Track details update without rebuilding the home screen. Players must expose Android media sessions; this can include podcasts and video as well as music.
 
 Stop sends [Android's media-session stop command](https://developer.android.com/reference/android/media/session/MediaController.TransportControls#stop()) to the selected player, including when paused. The home controls disappear once that player reports stopped playback or ends its session. Whether it also removes its notification or closes its service is up to the player; Quiet Home cannot force-close another app. Stop is dimmed if the player does not support it.
 
-Notification access is optional and can be revoked in Android Settings. Without it, home shows the setup button. Quiet Home observes session changes only while the home screen is in the foreground.
+Notification access is optional and can be revoked in Android Settings. Without it, the bottom section shows only Små Mål; music setup remains available in Everything else. Quiet Home observes session changes only while the home screen is in the foreground.
+
+## Små Mål
+
+The bottom section holds small goals for today, such as “Go for a run”, “Go for a swim”, or “Finish task A”. Tap **+ Add goal**, enter a goal, and save. Check a goal off when done, uncheck it to reopen it, or use **Edit** to rename or delete it. The count shows completed goals out of today's total.
+
+Goals and completion are saved locally across restarts. Each local calendar day has its own list; unfinished goals do not automatically carry forward. Earlier days remain stored locally but are not shown in today's section. The date refreshes while home is visible and on return. There is no account, sync, notification, or extra permission.
+
+The app list remains separate and stationary while the bottom section switches between music and goals. Obsidian replaces Garmin Connect in the existing home slot; Garmin remains available in Everything else when installed.
 
 ## Opening friction
 
@@ -136,7 +144,7 @@ adb -s emulator-5554 shell pm grant dk.natmad.home android.permission.WRITE_SECU
 adb -s emulator-5554 shell am instrument -w dk.natmad.home.test/dk.natmad.home.LauncherSmokeTest
 ```
 
-The rule checks cover search normalization, exact package classification, duplicate category membership, and timestamp age, the 12-hour boundary, and invalid timestamps. Display instrumentation checks the actual secure settings, the compact accessible icon, manual reset, timestamp persistence, upgrade migration, preserving colors in another app, and restoring monochrome on return home after the saved timestamp expires. These checks leave the emulator in monochrome. The instrumentation test verifies home ordering, the full alphabetical drawer, search, and a real YouTube launch attempt when installed. It also runs the actual 30-second countdown and 3-second hold, checking early activation, release/cancellation, focus loss, duplicate activation, detaching the view, and stable button placement with narrow layouts and large text. Real test media sessions exercise play/pause, previous/next, Stop during playing and paused playback, metadata updates, unsupported actions, session priority, stopped/released sessions, and returning home. They do not play audio. The emulator needs at least one configured home app installed, notification access enabled as above, and touch-exploration off for physical-hold tests. Revoke the test grant afterwards with `adb -s emulator-5554 shell cmd notification disallow_listener dk.natmad.home/dk.natmad.home.MediaAccessService`.
+The rule checks cover search normalization, exact package classification, duplicate category membership, and timestamp age, the 12-hour boundary, and invalid timestamps. Display instrumentation checks the actual secure settings, the compact accessible icon, manual reset, timestamp persistence, upgrade migration, preserving colors in another app, and restoring monochrome on return home after the saved timestamp expires. These checks leave the emulator in monochrome. The instrumentation test verifies home ordering, the full alphabetical drawer, search, and a real YouTube launch attempt when installed. It also runs the actual 30-second countdown and 3-second hold, checking early activation, release/cancellation, focus loss, duplicate activation, detaching the view, and stable button placement with narrow layouts and large text. Small-goal instrumentation checks empty-input rejection, adding, completion and reopening, persistence after rebuilding home, editing, deletion, and separation of calendar days. Swipe checks verify that music and goals share the bottom area and that stopping playback leaves only goals. Real test media sessions exercise play/pause, previous/next, Stop during playing and paused playback, metadata updates, unsupported actions, session priority, stopped/released sessions, and returning home. They do not play audio. The emulator needs at least one configured home app installed, notification access enabled as above, and touch-exploration off for physical-hold tests. Revoke the test grant afterwards with `adb -s emulator-5554 shell cmd notification disallow_listener dk.natmad.home/dk.natmad.home.MediaAccessService`.
 
 Alarm instrumentation checks the shared date/alarm row against the system's next alarm, then uses controlled alarm data and broadcasts to check empty/scheduled/cancelled states, opening alarms, missing or permission-protected Show alarms actions, a missing alarm app, 12/24-hour and time-zone changes, and receiver cleanup on stop and detach. A launchable alarm app must be installed for the fallback checks. It restores the time format after testing.
 

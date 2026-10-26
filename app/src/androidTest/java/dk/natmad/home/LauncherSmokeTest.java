@@ -92,11 +92,12 @@ public class LauncherSmokeTest extends Instrumentation {
                 }
                 find(root, "Back").performClick();
             });
+            SmallGoalsSmokeChecks.run(this, activity);
             AlarmSmokeChecks.run(this, activity);
             FrictionSmokeChecks.run(this, activity);
             MediaSmokeChecks.run(this, activity);
             DisplayModeSmokeChecks.run(this, activity);
-            result.putString("stream", "Launcher home, search, alarms, friction, media, and display mode smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
+            result.putString("stream", "Launcher home, search, small goals, alarms, friction, media swiping, and display mode smoke tests passed on Android " + android.os.Build.VERSION.RELEASE + "\n");
             finish(Activity.RESULT_OK, result);
         } catch (Throwable error) {
             result.putString("stream", "FAILED: " + error + "\n");

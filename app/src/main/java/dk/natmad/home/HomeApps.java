@@ -9,7 +9,7 @@ public final class HomeApps {
     public static final String[][] PACKAGES = {
         {"com.google.android.dialer", "com.android.dialer"},
         {"dk.rejsekort.digitalrejsekort"},
-        {"com.garmin.android.apps.connectmobile"},
+        {"md.obsidian"},
         {"com.madsbuch.tally"},
         {"com.varg.workout"}
     };

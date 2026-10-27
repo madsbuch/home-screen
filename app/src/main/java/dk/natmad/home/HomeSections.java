@@ -54,6 +54,9 @@ final class HomeSections extends LinearLayout {
         preferredSection = initialSection;
         setOrientation(VERTICAL);
         setFocusableInTouchMode(true);
+        View divider = new View(context);
+        divider.setBackgroundColor(0xff333333);
+        addView(divider, new LayoutParams(-1, dp(1)));
         pages = new SectionPager(context, section -> {
             preferredSection = section;
             onSelection.accept(section);
@@ -281,7 +284,7 @@ final class HomeSections extends LinearLayout {
             compactHeight = Math.max(compactHeight, media.getMeasuredHeight());
         }
         super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(
-            Math.min(compactHeight, MeasureSpec.getSize(heightSpec)), MeasureSpec.EXACTLY));
+            Math.min(compactHeight + dp(1), MeasureSpec.getSize(heightSpec)), MeasureSpec.EXACTLY));
     }
 
     @Override protected void onAttachedToWindow() {
